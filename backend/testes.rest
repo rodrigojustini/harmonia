@@ -1,0 +1,65 @@
+### Registrar novo usuário
+POST http://localhost:4000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Rodrigo",
+  "email": "rodrigo@example.com",
+  "password": "123456"
+}
+
+### Fazer login
+POST http://localhost:4000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "rodrigo@example.com",
+  "password": "123456"
+}
+
+### Criar música (REQUER AUTENTICAÇÃO)
+POST http://localhost:4000/api/musicas
+Content-Type: application/json
+Authorization: Bearer SEU_TOKEN_AQUI
+
+{
+  "titulo": "Te Agradeço",
+  "tomOriginal": "G",
+  "link": "https://www.youtube.com/watch?v=abc123",
+  "observacoes": "Introdução com teclado"
+}
+
+### Listar músicas (REQUER AUTENTICAÇÃO)
+GET http://localhost:4000/api/musicas
+Authorization: Bearer SEU_TOKEN_AQUI
+
+### Criar membro (REQUER AUTENTICAÇÃO)
+POST http://localhost:4000/api/membros
+Content-Type: application/json
+Authorization: Bearer SEU_TOKEN_AQUI
+
+{
+  "nome": "João Silva",
+  "voz": "Tenor",
+  "funcao": "Voz líder",
+  "aniversario": "1995-10-10"
+}
+
+### Listar membros (REQUER AUTENTICAÇÃO)
+GET http://localhost:4000/api/membros
+Authorization: Bearer SEU_TOKEN_AQUI
+
+### Criar culto (REQUER AUTENTICAÇÃO)
+POST http://localhost:4000/api/cultos
+Content-Type: application/json
+Authorization: Bearer SEU_TOKEN_AQUI
+
+{
+  "data": "2025-11-10",
+  "nome": "Domingo Manhã",
+  "musicaIds": [1, 2]
+}
+
+### Listar cultos (REQUER AUTENTICAÇÃO)
+GET http://localhost:4000/api/cultos
+Authorization: Bearer SEU_TOKEN_AQUI

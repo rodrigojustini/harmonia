@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Harmonia - Ministério de Louvor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo-circle">H</div>
+      <div class="brand-text">
+        <h1>Harmonia</h1>
+        <span>Gestão de Ministério de Louvor</span>
+      </div>
+    </div>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="musicas">Músicas</button>
+      <button class="tab-btn" data-tab="cultos">Cultos / Mapas</button>
+      <button class="tab-btn" data-tab="membros">Membros</button>
+      <button class="tab-btn" data-tab="aniversarios">Aniversários</button>
+      <button class="tab-btn" data-tab="config">Config</button>
+    </nav>
+  </header>
+
+  <main class="app-main">
+    <!-- MÚSICAS -->
+    <section id="musicas" class="section active">
+      <div class="section-title">
+        <h2>Músicas</h2>
+        <p>Cadastre e gerencie o repertório do ministério.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Nova música</h3>
+          <form id="formMusica">
+            <div class="field-group">
+              <label for="musicaTitulo">Título</label>
+              <input id="musicaTitulo" type="text" required />
+            </div>
+            <div class="field-group">
+              <label for="musicaTom">Tom original</label>
+              <input id="musicaTom" type="text" placeholder="Ex: G, A, F#..." />
+            </div>
+            <div class="field-group">
+              <label for="musicaLink">Link (YouTube / Cifra)</label>
+              <input id="musicaLink" type="url" placeholder="https://..." />
+            </div>
+            <div class="field-group">
+              <label for="musicaCifra">Cifra / acordes (opcional)</label>
+              <textarea id="musicaCifra" rows="4" placeholder="Ex: G  D  Em  C&#10;C  D  G  Em"></textarea>
+              <small>Use uma linha por compasso ou parte da música. Os acordes serão transpostos automaticamente.</small>
+            </div>
+            <div class="field-group">
+              <label for="musicaObs">Observações</label>
+              <textarea id="musicaObs" rows="2" placeholder="Intro, dinâmicas, quem entra em cada parte..."></textarea>
+            </div>
+            <button class="btn primary" type="submit">Salvar música</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Lista de músicas</h3>
+          <div id="listaMusicas" class="list"></div>
+        </div>
+      </div>
+
+      <div class="card" id="musicaDetalhesCard" style="display:none;">
+        <h3>Mapa / detalhes da música</h3>
+        <div id="musicaDetalhes"></div>
+      </div>
+    </section>
+
+    <!-- CULTOS / MAPAS -->
+    <section id="cultos" class="section">
+      <div class="section-title">
+        <h2>Cultos / Mapas</h2>
+        <p>Monte o mapa do culto com músicas em ordem.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Novo culto</h3>
+          <form id="formCulto">
+            <div class="field-group">
+              <label for="cultoData">Data</label>
+              <input id="cultoData" type="date" required />
+            </div>
+            <div class="field-group">
+              <label for="cultoNome">Nome do culto</label>
+              <input id="cultoNome" type="text" placeholder="Domingo Noite, Quinta, etc." required />
+            </div>
+            <div class="field-group">
+              <label for="cultoMusicas">Músicas (ordem do culto)</label>
+              <select id="cultoMusicas" multiple size="6"></select>
+              <small>Segure Ctrl (ou toque) para selecionar várias músicas.</small>
+            </div>
+            <button class="btn primary" type="submit">Criar culto / mapa</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Cultos criados</h3>
+          <div id="listaCultos" class="list"></div>
+        </div>
+      </div>
+
+      <div class="card" id="cultoDetalhesCard" style="display:none;">
+        <h3>Detalhes do culto</h3>
+        <div id="cultoDetalhes"></div>
+      </div>
+    </section>
+
+    <!-- MEMBROS -->
+    <section id="membros" class="section">
+      <div class="section-title">
+        <h2>Membros</h2>
+        <p>Cadastre quem faz parte do ministério.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Novo membro</h3>
+          <form id="formMembro">
+            <div class="field-group">
+              <label for="membroNome">Nome</label>
+              <input id="membroNome" type="text" required />
+            </div>
+            <div class="field-group">
+              <label for="membroVoz">Voz / Seção</label>
+              <select id="membroVoz">
+                <option value="">Selecione</option>
+                <option value="Soprano">Soprano</option>
+                <option value="Contralto">Contralto</option>
+                <option value="Tenor">Tenor</option>
+                <option value="Baixo">Baixo</option>
+                <option value="Instrumentista">Instrumentista</option>
+                <option value="Técnico">Técnico</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="membroFuncao">Função</label>
+              <input id="membroFuncao" type="text" placeholder="Ex: Voz líder, teclado..." />
+            </div>
+            <div class="field-group">
+              <label for="membroAniversario">Aniversário</label>
+              <input id="membroAniversario" type="date" />
+            </div>
+            <button class="btn primary" type="submit">Salvar membro</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Lista de membros</h3>
+          <div id="listaMembros" class="list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANIVERSÁRIOS -->
+    <section id="aniversarios" class="section">
+      <div class="section-title">
+        <h2>Aniversários do mês</h2>
+        <p>Veja quem faz aniversário neste mês.</p>
+      </div>
+      <div class="card">
+        <div id="listaAniversariantes" class="list"></div>
+      </div>
+    </section>
+
+    <!-- CONFIG -->
+    <section id="config" class="section">
+      <div class="section-title">
+        <h2>Configurações</h2>
+        <p>Opções gerais do app.</p>
+      </div>
+
+      <div class="card">
+        <h3>Tela ligada</h3>
+        <p>
+          Ative para tentar manter a tela do dispositivo ligada durante o culto.<br />
+          <small>Nem todos os aparelhos/navegadores suportam esse recurso.</small>
+        </p>
+        <button class="btn primary" id="btnWakeLock">Ativar Manter Tela Ligada</button>
+      </div>
+
+      <div class="card">
+        <h3>Dados</h3>
+        <button class="btn danger" id="btnLimparDados">Apagar todos os dados (local)</button>
+        <p><small>Use com cuidado – isso apaga músicas, membros e cultos salvos neste dispositivo.</small></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span>Harmonia • Ministério de Louvor</span>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
