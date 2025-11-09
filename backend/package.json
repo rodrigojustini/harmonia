@@ -1,13 +1,22 @@
 {
   "name": "harmonia-backend",
   "version": "1.0.0",
+  "description": "Backend do sistema Harmonia - Gerenciamento de escalas musicais e repertório",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "build": "echo 'No build step required for Node.js'",
+    "test": "echo 'No tests specified yet'",
     "prisma:migrate": "npx prisma migrate dev",
-    "prisma:generate": "npx prisma generate"
+    "prisma:generate": "npx prisma generate",
+    "prisma:reset": "npx prisma migrate reset",
+    "prisma:studio": "npx prisma studio",
+    "pm2:start": "pm2 start src/server.js --name harmonia-backend",
+    "pm2:stop": "pm2 stop harmonia-backend",
+    "pm2:restart": "pm2 restart harmonia-backend",
+    "pm2:logs": "pm2 logs harmonia-backend"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -21,5 +30,23 @@
   "devDependencies": {
     "nodemon": "^3.1.10",
     "prisma": "^5.22.0"
+  },
+  "keywords": [
+    "harmonia",
+    "music",
+    "schedule",
+    "backend",
+    "api",
+    "express",
+    "prisma"
+  ],
+  "author": "Rodrigo Justini",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rodrigojustini/harmonia.git"
   }
 }

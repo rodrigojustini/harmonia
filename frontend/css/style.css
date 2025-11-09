@@ -180,7 +180,6 @@ label {
 }
 
 input,
-select,
 textarea {
   background: #101010;
   border-radius: 0.7rem;
@@ -287,6 +286,368 @@ textarea {
   font-size: 0.7rem;
   background: var(--verde-escuro);
   color: var(--branco);
+}
+
+/* ====== SISTEMA DE ESCALA ====== */
+
+/* Controles da escala */
+.escala-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.month-selector {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.escala-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Calendário da escala */
+.escala-calendario {
+  margin-top: 1rem;
+}
+
+.calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calendario-header {
+  background: var(--verde-escuro);
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.calendario-dia {
+  background: rgba(0, 0, 0, 0.8);
+  min-height: 120px;
+  padding: 0.5rem;
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calendario-dia:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.calendario-dia.outro-mes {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.calendario-dia.aprovada {
+  border-left: 4px solid var(--verde);
+}
+
+.calendario-dia.pendente {
+  border-left: 4px solid #f39c12;
+}
+
+.dia-numero {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.dia-membros {
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.membro-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem;
+  margin: 0.1rem 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+.membro-funcao {
+  color: var(--verde);
+  font-weight: 500;
+}
+
+.dia-musicas {
+  font-size: 0.7rem;
+}
+
+.musica-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem;
+  margin: 0.1rem 0;
+  background: rgba(46, 204, 113, 0.1);
+  border-radius: 3px;
+  border-left: 2px solid var(--verde);
+}
+
+.musica-titulo {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.musica-tom {
+  color: #ecf0f1;
+  font-weight: 500;
+  margin-left: 0.25rem;
+}
+
+.btn-excluir-musica {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 0.1rem 0.3rem;
+  cursor: pointer;
+  font-size: 0.6rem;
+  margin-left: 0.25rem;
+}
+
+.btn-excluir-musica:hover {
+  background: #c0392b;
+}
+
+.btn-adicionar-musica {
+  background: var(--verde-escuro);
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 0.3rem;
+  cursor: pointer;
+  font-size: 0.7rem;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.btn-adicionar-musica:hover {
+  background: var(--verde);
+}
+
+/* ====== MODAIS ====== */
+.modal {
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background: var(--cinza-escuro);
+  margin: 5% auto;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: white;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+/* ====== SISTEMA DE TROCAS ====== */
+.troca-item {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #f39c12;
+}
+
+.troca-item.aprovada {
+  border-left-color: var(--verde);
+}
+
+.troca-item.recusada {
+  border-left-color: #e74c3c;
+}
+
+.troca-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.troca-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.troca-status.pendente {
+  background: #f39c12;
+  color: white;
+}
+
+.troca-status.aceita_receptor {
+  background: #3498db;
+  color: white;
+}
+
+.troca-status.aprovada {
+  background: var(--verde);
+  color: white;
+}
+
+.troca-status.recusada {
+  background: #e74c3c;
+  color: white;
+}
+
+.troca-detalhes {
+  font-size: 0.9rem;
+  color: #bdc3c7;
+  margin-bottom: 0.5rem;
+}
+
+.troca-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ====== HISTÓRICO ====== */
+.historico-filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 150px;
+}
+
+.filter-group label {
+  font-size: 0.8rem;
+  color: #bdc3c7;
+}
+
+.historico-list {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.historico-item {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  border-left: 4px solid var(--verde);
+}
+
+.historico-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.historico-acao {
+  font-weight: 600;
+  color: var(--verde);
+}
+
+.historico-data {
+  font-size: 0.8rem;
+  color: #95a5a6;
+}
+
+.historico-usuario {
+  font-size: 0.9rem;
+  color: #ecf0f1;
+}
+
+.historico-detalhes {
+  font-size: 0.85rem;
+  color: #bdc3c7;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+/* ====== RESPONSIVIDADE ====== */
+@media (max-width: 768px) {
+  .escala-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .calendario-grid {
+    grid-template-columns: repeat(7, 1fr);
+    font-size: 0.8rem;
+  }
+  
+  .calendario-dia {
+    min-height: 100px;
+    padding: 0.3rem;
+  }
+  
+  .historico-filters {
+    flex-direction: column;
+  }
+  
+  .filter-group {
+    min-width: auto;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 10% auto;
+    padding: 1.5rem;
+  }
 }
 
 /* Footer */

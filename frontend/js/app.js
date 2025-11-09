@@ -1,7 +1,25 @@
 // ====== CONFIGURAÇÃO DA API ======
-const API_BASE = window.location.hostname === 'localhost' 
-  ? "http://localhost:4000/api" 
-  : "http://192.168.0.12:4000/api";
+// Detectar automaticamente o IP correto
+function getApiBase() {
+  const hostname = window.location.hostname;
+  
+  // Se acessando via IP 192.168.0.12, usar esse IP para o backend também
+  if (hostname === '192.168.0.12') {
+    return 'http://192.168.0.12:4000/api';
+  }
+  
+  // Se acessando via localhost ou 127.0.0.1, usar localhost
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:4000/api';
+  }
+  
+  // Para outros casos, tentar detectar dinamicamente
+  return `http://${hostname}:4000/api`;
+}
+
+const API_BASE = getApiBase();
+console.log("🌐 API Base configurada para:", API_BASE);
+console.log("🌍 Hostname atual:", window.location.hostname);
 
 // ====== GESTÃO DE AUTENTICAÇÃO ======
 let currentUser = null;
@@ -260,15 +278,28 @@ function showMainApp() {
   const header = document.querySelector('.app-header');
   header.style.display = 'flex';
   
-  // Adicionar botão de logout
-  const existingLogout = header.querySelector('.logout-btn');
-  if (!existingLogout) {
+  // Adicionar informações do usuário
+  const existingUserInfo = header.querySelector('.user-info');
+  if (!existingUserInfo) {
+    const userInfo = document.createElement('div');
+    userInfo.className = 'user-info';
+    userInfo.style.marginLeft = 'auto';
+    userInfo.style.display = 'flex';
+    userInfo.style.alignItems = 'center';
+    userInfo.style.gap = '1rem';
+    
+    const userSpan = document.createElement('span');
+    userSpan.textContent = `${currentUser?.name || 'Usuário'} ${currentUser?.role === 'leader' ? '(Líder)' : '(Membro)'}`;
+    userSpan.style.fontSize = '0.9rem';
+    
     const logoutBtn = document.createElement('button');
-    logoutBtn.className = 'btn small logout-btn';
+    logoutBtn.className = 'btn small secondary';
     logoutBtn.textContent = 'Sair';
-    logoutBtn.style.marginLeft = 'auto';
     logoutBtn.addEventListener('click', logout);
-    header.appendChild(logoutBtn);
+    
+    userInfo.appendChild(userSpan);
+    userInfo.appendChild(logoutBtn);
+    header.appendChild(userInfo);
   }
   
   // Restaurar conteúdo principal
@@ -936,196 +967,685 @@ function initConfig() {
 
 // ====== INIT GERAL ======
 function initMainApp() {
-  // Restaurar o HTML original da main
-  const main = document.querySelector('.app-main');
-  main.innerHTML = `
-    <!-- MÚSICAS -->
-    <section id="musicas" class="section active">
-      <div class="section-title">
-        <h2>Músicas</h2>
-        <p>Cadastre e gerencie o repertório do ministério.</p>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <h3>Nova música</h3>
-          <form id="formMusica">
-            <div class="field-group">
-              <label for="musicaTitulo">Título</label>
-              <input id="musicaTitulo" type="text" required />
-            </div>
-            <div class="field-group">
-              <label for="musicaTom">Tom original</label>
-              <input id="musicaTom" type="text" placeholder="Ex: G, A, F#..." />
-            </div>
-            <div class="field-group">
-              <label for="musicaLink">Link (YouTube / Cifra)</label>
-              <input id="musicaLink" type="url" placeholder="https://..." />
-            </div>
-            <div class="field-group">
-              <label for="musicaCifra">Cifra / acordes (opcional)</label>
-              <textarea id="musicaCifra" rows="4" placeholder="Ex: G  D  Em  C&#10;C  D  G  Em"></textarea>
-              <small>Use uma linha por compasso ou parte da música. Os acordes serão transpostos automaticamente.</small>
-            </div>
-            <div class="field-group">
-              <label for="musicaObs">Observações</label>
-              <textarea id="musicaObs" rows="2" placeholder="Intro, dinâmicas, quem entra em cada parte..."></textarea>
-            </div>
-            <button class="btn primary" type="submit">Salvar música</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <h3>Lista de músicas</h3>
-          <div id="listaMusicas" class="list"></div>
-        </div>
-      </div>
-
-      <div class="card" id="musicaDetalhesCard" style="display:none;">
-        <h3>Mapa / detalhes da música</h3>
-        <div id="musicaDetalhes"></div>
-      </div>
-    </section>
-
-    <!-- CULTOS / MAPAS -->
-    <section id="cultos" class="section">
-      <div class="section-title">
-        <h2>Cultos / Mapas</h2>
-        <p>Monte o mapa do culto com músicas em ordem.</p>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <h3>Novo culto</h3>
-          <form id="formCulto">
-            <div class="field-group">
-              <label for="cultoData">Data</label>
-              <input id="cultoData" type="date" required />
-            </div>
-            <div class="field-group">
-              <label for="cultoNome">Nome do culto</label>
-              <input id="cultoNome" type="text" placeholder="Domingo Noite, Quinta, etc." required />
-            </div>
-            <div class="field-group">
-              <label for="cultoMusicas">Músicas (ordem do culto)</label>
-              <select id="cultoMusicas" multiple size="6"></select>
-              <small>Segure Ctrl (ou toque) para selecionar várias músicas.</small>
-            </div>
-            <button class="btn primary" type="submit">Criar culto / mapa</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <h3>Cultos criados</h3>
-          <div id="listaCultos" class="list"></div>
-        </div>
-      </div>
-
-      <div class="card" id="cultoDetalhesCard" style="display:none;">
-        <h3>Detalhes do culto</h3>
-        <div id="cultoDetalhes"></div>
-      </div>
-    </section>
-
-    <!-- MEMBROS -->
-    <section id="membros" class="section">
-      <div class="section-title">
-        <h2>Membros</h2>
-        <p>Cadastre quem faz parte do ministério.</p>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <h3>Novo membro</h3>
-          <form id="formMembro">
-            <div class="field-group">
-              <label for="membroNome">Nome</label>
-              <input id="membroNome" type="text" required />
-            </div>
-            <div class="field-group">
-              <label for="membroVoz">Voz / Seção</label>
-              <select id="membroVoz">
-                <option value="">Selecione</option>
-                <option value="Soprano">Soprano</option>
-                <option value="Contralto">Contralto</option>
-                <option value="Tenor">Tenor</option>
-                <option value="Baixo">Baixo</option>
-                <option value="Instrumentista">Instrumentista</option>
-                <option value="Técnico">Técnico</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="membroFuncao">Função</label>
-              <input id="membroFuncao" type="text" placeholder="Ex: Voz líder, teclado..." />
-            </div>
-            <div class="field-group">
-              <label for="membroAniversario">Aniversário</label>
-              <input id="membroAniversario" type="date" />
-            </div>
-            <button class="btn primary" type="submit">Salvar membro</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <h3>Lista de membros</h3>
-          <div id="listaMembros" class="list"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ANIVERSÁRIOS -->
-    <section id="aniversarios" class="section">
-      <div class="section-title">
-        <h2>Aniversários do mês</h2>
-        <p>Veja quem faz aniversário neste mês.</p>
-      </div>
-      <div class="card">
-        <div id="listaAniversariantes" class="list"></div>
-      </div>
-    </section>
-
-    <!-- CONFIG -->
-    <section id="config" class="section">
-      <div class="section-title">
-        <h2>Configurações</h2>
-        <p>Opções gerais do app.</p>
-      </div>
-
-      <div class="card">
-        <h3>Usuário</h3>
-        <p>Logado como: <strong>${currentUser?.name}</strong> (${currentUser?.email})</p>
-        <button class="btn danger" onclick="logout()">Sair da conta</button>
-      </div>
-
-      <div class="card">
-        <h3>Tela ligada</h3>
-        <p>
-          Ative para tentar manter a tela do dispositivo ligada durante o culto.<br />
-          <small>Nem todos os aparelhos/navegadores suportam esse recurso.</small>
-        </p>
-        <button class="btn primary" id="btnWakeLock">Ativar Manter Tela Ligada</button>
-      </div>
-
-      <div class="card">
-        <h3>Dados</h3>
-        <button class="btn danger" id="btnLimparDados">Apagar todos os dados (local)</button>
-        <p><small>Use com cuidado – isso apaga músicas, membros e cultos salvos neste dispositivo.</small></p>
-      </div>
-    </section>
-  `;
-  
+  // HTML já está no index.html, apenas inicializar funcionalidades
   initTabs();
+  initEscala();
+  initTrocas();
   initMusicas();
   initMembros();
   initCultos();
+  initHistorico();
   initConfig();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Verificar se há dados de autenticação salvos
-  if (loadAuthData()) {
-    showMainApp();
-  } else {
-    showLoginForm();
+// ====== SISTEMA DE ESCALA ======
+let escalaAtual = null;
+let escalaSelecionada = null;
+
+async function initEscala() {
+  console.log("🔧 Inicializando sistema de escala...");
+  
+  const btnCarregarEscala = document.getElementById("btnCarregarEscala");
+  const btnCriarEscala = document.getElementById("btnCriarEscala");
+  const btnAprovarEscala = document.getElementById("btnAprovarEscala");
+  const formAdicionarMusica = document.getElementById("formAdicionarMusica");
+  const escalaMes = document.getElementById("escalaMes");
+  const escalaAno = document.getElementById("escalaAno");
+
+  if (!btnCarregarEscala) {
+    console.error("❌ Elemento 'btnCarregarEscala' não encontrado!");
+    return;
   }
-});
+
+  // Definir mês/ano atual
+  const agora = new Date();
+  if (escalaMes) escalaMes.value = agora.getMonth() + 1;
+  if (escalaAno) escalaAno.value = agora.getFullYear();
+  
+  console.log("✅ Elementos encontrados, configurando eventos...");
+
+  btnCarregarEscala?.addEventListener("click", carregarEscala);
+  btnCriarEscala?.addEventListener("click", criarEscala);
+  btnAprovarEscala?.addEventListener("click", aprovarEscala);
+  formAdicionarMusica?.addEventListener("submit", adicionarMusicaEscala);
+
+  // Fechar modal ao clicar no X
+  document.querySelector("#modalAdicionarMusica .close")?.addEventListener("click", () => {
+    fecharModal("modalAdicionarMusica");
+  });
+
+  // Carregar escala atual automaticamente
+  await carregarEscala();
+}
+
+async function carregarEscala() {
+  try {
+    console.log("🔍 Carregando escala...");
+    
+    // Verificar se está logado
+    if (!authToken) {
+      console.error("❌ Usuário não está logado!");
+      showNotification("Faça login para acessar a escala", "error");
+      return;
+    }
+    
+    const mesEl = document.getElementById("escalaMes");
+    const anoEl = document.getElementById("escalaAno");
+    
+    if (!mesEl || !anoEl) {
+      console.error("❌ Elementos de mês/ano não encontrados!");
+      showNotification("Erro: elementos não encontrados", "error");
+      return;
+    }
+    
+    const mes = mesEl.value;
+    const ano = anoEl.value;
+    
+    console.log(`📅 Buscando escala para ${mes}/${ano}`);
+    console.log("🔑 Token:", authToken ? "Presente" : "Ausente");
+    
+    const response = await apiCall(`/escalas?mes=${mes}&ano=${ano}`);
+    console.log("📊 Resposta da API:", response);
+    const escalas = Array.isArray(response) ? response : (response.data || []);
+
+    if (escalas.length > 0) {
+      escalaAtual = escalas[0];
+      escalaSelecionada = escalaAtual;
+      renderizarCalendario(escalaAtual);
+      mostrarBotaoAprovar();
+    } else {
+      escalaAtual = null;
+      renderizarCalendarioVazio();
+      mostrarBotaoCriar();
+    }
+  } catch (error) {
+    console.error("Erro ao carregar escala:", error);
+    showNotification("Erro ao carregar escala", "error");
+  }
+}
+
+async function criarEscala() {
+  try {
+    console.log("🔄 Criando escala...");
+    
+    if (!authToken) {
+      showNotification("Faça login para criar uma escala", "error");
+      return;
+    }
+    
+    const mesEl = document.getElementById("escalaMes");
+    const anoEl = document.getElementById("escalaAno");
+    
+    if (!mesEl || !anoEl) {
+      console.error("❌ Elementos de mês/ano não encontrados!");
+      showNotification("Erro: elementos não encontrados", "error");
+      return;
+    }
+    
+    const mes = parseInt(mesEl.value);
+    const ano = parseInt(anoEl.value);
+    
+    console.log(`📅 Criando escala para ${mes}/${ano}`);
+    
+    const response = await apiCall("/escalas", "POST", { mes, ano });
+
+    escalaAtual = response.data || response;
+    escalaSelecionada = escalaAtual;
+    renderizarCalendario(escalaAtual);
+    mostrarBotaoAprovar();
+    showNotification("Escala criada com sucesso!", "success");
+    
+  } catch (error) {
+    console.error("❌ Erro ao criar escala:", error);
+    showNotification("Erro ao criar escala: " + (error.message || "Erro desconhecido"), "error");
+  }
+}
+
+async function aprovarEscala() {
+  if (!escalaAtual) return;
+
+  try {
+    await apiCall(`/escalas/${escalaAtual.id}/aprovar`, { method: "PUT" });
+    escalaAtual.aprovada = true;
+    renderizarCalendario(escalaAtual);
+    showNotification("Escala aprovada com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao aprovar escala:", error);
+    showNotification("Erro ao aprovar escala: " + (error.message || "Erro desconhecido"), "error");
+  }
+}
+
+function mostrarBotaoCriar() {
+  console.log("👑 Usuário atual:", currentUser);
+  console.log("🔧 Mostrando botão criar escala");
+  
+  const btnCriar = document.getElementById("btnCriarEscala");
+  const btnAprovar = document.getElementById("btnAprovarEscala");
+  
+  if (btnCriar) {
+    btnCriar.style.display = currentUser?.role === "leader" ? "inline-block" : "none";
+    console.log("➕ Botão criar:", btnCriar.style.display);
+  }
+  
+  if (btnAprovar) {
+    btnAprovar.style.display = "none";
+  }
+}
+
+function mostrarBotaoAprovar() {
+  document.getElementById("btnCriarEscala").style.display = "none";
+  if (currentUser?.role === "leader" && escalaAtual && !escalaAtual.aprovada) {
+    document.getElementById("btnAprovarEscala").style.display = "inline-block";
+  } else {
+    document.getElementById("btnAprovarEscala").style.display = "none";
+  }
+}
+
+function renderizarCalendario(escala) {
+  const container = document.getElementById("escalaCalendario");
+  const mes = escala.mes;
+  const ano = escala.ano;
+  
+  // Criar grid do calendário
+  const primeiroDia = new Date(ano, mes - 1, 1);
+  const ultimoDia = new Date(ano, mes, 0);
+  const diasDoMes = ultimoDia.getDate();
+  const diaDaSemana = primeiroDia.getDay();
+  
+  let html = `
+    <div class="calendario-grid">
+      <div class="calendario-header">Dom</div>
+      <div class="calendario-header">Seg</div>
+      <div class="calendario-header">Ter</div>
+      <div class="calendario-header">Qua</div>
+      <div class="calendario-header">Qui</div>
+      <div class="calendario-header">Sex</div>
+      <div class="calendario-header">Sáb</div>
+  `;
+
+  // Dias do mês anterior (para preencher a primeira semana)
+  const diasMesAnterior = new Date(ano, mes - 1, 0).getDate();
+  for (let i = diaDaSemana - 1; i >= 0; i--) {
+    html += `<div class="calendario-dia outro-mes">
+      <div class="dia-numero">${diasMesAnterior - i}</div>
+    </div>`;
+  }
+
+  // Dias do mês atual
+  for (let dia = 1; dia <= diasDoMes; dia++) {
+    const data = new Date(ano, mes - 1, dia);
+    const dataStr = data.toISOString().split('T')[0];
+    
+    // Filtrar membros e músicas para este dia
+    const membrosNoDia = escala.membros?.filter(m => 
+      new Date(m.data).toDateString() === data.toDateString()
+    ) || [];
+    
+    const musicasNoDia = escala.musicas?.filter(m => 
+      new Date(m.data).toDateString() === data.toDateString()
+    ) || [];
+
+    const classeStatus = escala.aprovada ? 'aprovada' : 'pendente';
+    
+    html += `
+      <div class="calendario-dia ${classeStatus}" data-data="${dataStr}">
+        <div class="dia-numero">${dia}</div>
+        <div class="dia-membros">
+          ${membrosNoDia.map(m => `
+            <div class="membro-item">
+              <span>${m.user?.name || 'Usuário'}</span>
+              <span class="membro-funcao">${m.funcao}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="dia-musicas">
+          ${musicasNoDia.map(m => `
+            <div class="musica-item">
+              <span class="musica-titulo">${m.titulo}</span>
+              ${m.tom ? `<span class="musica-tom">${m.tom}</span>` : ''}
+              ${podeExcluirMusica(m) ? `<button class="btn-excluir-musica" onclick="excluirMusicaEscala(${m.id})">🗑️</button>` : ''}
+            </div>
+          `).join('')}
+          ${membrosNoDia.length > 0 ? `<button class="btn-adicionar-musica" onclick="abrirModalMusica('${dataStr}')">+ Música</button>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function renderizarCalendarioVazio() {
+  const container = document.getElementById("escalaCalendario");
+  container.innerHTML = `
+    <div class="card">
+      <h3>Nenhuma escala encontrada</h3>
+      <p>Não há escala criada para este mês/ano.</p>
+      ${currentUser?.role === "leader" ? `<p><strong>Como líder, você pode criar uma nova escala.</strong></p>` : ''}
+    </div>
+  `;
+}
+
+function podeExcluirMusica(musica) {
+  if (currentUser?.role === "leader") return true;
+  if (currentUser?.id === musica.adicionadoPor && !escalaAtual?.aprovada) return true;
+  return false;
+}
+
+function abrirModalMusica(data) {
+  document.getElementById("musicaData").value = data;
+  document.getElementById("modalAdicionarMusica").style.display = "block";
+}
+
+function fecharModal(modalId) {
+  document.getElementById(modalId).style.display = "none";
+}
+
+async function adicionarMusicaEscala(e) {
+  e.preventDefault();
+  
+  if (!escalaAtual) return;
+
+  try {
+    const data = document.getElementById("musicaData").value;
+    const titulo = document.getElementById("musicaTituloModal").value;
+    const tom = document.getElementById("musicaTomModal").value;
+    const link = document.getElementById("musicaLinkModal").value;
+
+    await apiCall(`/escalas/${escalaAtual.id}/musicas`, {
+      method: "POST",
+      body: JSON.stringify({ data, titulo, tom, link })
+    });
+
+    // Recarregar escala
+    await carregarEscala();
+    fecharModal("modalAdicionarMusica");
+    e.target.reset();
+    showNotification("Música adicionada com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao adicionar música:", error);
+    showNotification("Erro ao adicionar música: " + (error.message || "Erro desconhecido"), "error");
+  }
+}
+
+async function excluirMusicaEscala(musicaId) {
+  if (!confirm("Tem certeza que deseja excluir esta música?")) return;
+
+  try {
+    await apiCall(`/escalas/${escalaAtual.id}/musicas/${musicaId}`, {
+      method: "DELETE"
+    });
+
+    await carregarEscala();
+    showNotification("Música excluída com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao excluir música:", error);
+    showNotification("Erro ao excluir música: " + (error.message || "Erro desconhecido"), "error");
+  }
+}
+
+// ====== SISTEMA DE TROCAS ======
+async function initTrocas() {
+  const formSolicitarTroca = document.getElementById("formSolicitarTroca");
+  formSolicitarTroca?.addEventListener("submit", solicitarTroca);
+
+  await carregarEscalasParaTroca();
+  await carregarMembrosParaTroca();
+  await carregarTrocas();
+}
+
+async function carregarEscalasParaTroca() {
+  try {
+    const response = await apiCall("/escalas");
+    const escalas = response.data || response;
+    
+    const select = document.getElementById("trocaEscala");
+    if (select) {
+      select.innerHTML = '<option value="">Selecione uma escala</option>';
+      escalas.forEach(escala => {
+        select.innerHTML += `<option value="${escala.id}">${getMonthName(escala.mes)} ${escala.ano}</option>`;
+      });
+    }
+  } catch (error) {
+    console.error("Erro ao carregar escalas:", error);
+  }
+}
+
+async function carregarMembrosParaTroca() {
+  try {
+    const response = await apiCall("/auth/perfil");
+    const users = response.data || response;
+    
+    // Aqui seria ideal ter um endpoint para listar usuários da mesma função
+    // Por enquanto, vou simular
+    const select = document.getElementById("trocaReceptor");
+    if (select && currentUser?.funcao) {
+      select.innerHTML = '<option value="">Selecione um membro</option>';
+      // Aqui você precisaria de um endpoint para buscar membros com a mesma função
+    }
+  } catch (error) {
+    console.error("Erro ao carregar membros:", error);
+  }
+}
+
+async function carregarTrocas() {
+  try {
+    const response = await apiCall("/trocas");
+    const trocas = response.data || response;
+    
+    renderizarTrocas(trocas);
+    
+    if (currentUser?.role === "leader") {
+      const trocasPendentes = trocas.filter(t => t.status === "aceita_receptor");
+      renderizarTrocasPendentes(trocasPendentes);
+    }
+  } catch (error) {
+    console.error("Erro ao carregar trocas:", error);
+  }
+}
+
+async function solicitarTroca(e) {
+  e.preventDefault();
+  
+  try {
+    const escalaId = document.getElementById("trocaEscala").value;
+    const data = document.getElementById("trocaData").value;
+    const receptorId = document.getElementById("trocaReceptor").value;
+    const observacao = document.getElementById("trocaObservacao").value;
+
+    await apiCall(`/escalas/${escalaId}/trocas`, {
+      method: "POST",
+      body: JSON.stringify({
+        receptorId: parseInt(receptorId),
+        data,
+        funcao: currentUser.funcao,
+        observacao
+      })
+    });
+
+    e.target.reset();
+    await carregarTrocas();
+    showNotification("Troca solicitada com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao solicitar troca:", error);
+    showNotification("Erro ao solicitar troca: " + (error.message || "Erro desconhecido"), "error");
+  }
+}
+
+function renderizarTrocas(trocas) {
+  const container = document.getElementById("listaTrocas");
+  if (!container) return;
+
+  if (trocas.length === 0) {
+    container.innerHTML = '<p>Nenhuma troca encontrada.</p>';
+    return;
+  }
+
+  container.innerHTML = trocas.map(troca => `
+    <div class="troca-item ${troca.status}">
+      <div class="troca-header">
+        <strong>${troca.solicitante?.name} ↔ ${troca.receptor?.name}</strong>
+        <span class="troca-status ${troca.status}">${getStatusTroca(troca.status)}</span>
+      </div>
+      <div class="troca-detalhes">
+        <p><strong>Data:</strong> ${formatDate(troca.data)} | <strong>Função:</strong> ${troca.funcao}</p>
+        ${troca.observacao ? `<p><strong>Observação:</strong> ${troca.observacao}</p>` : ''}
+        <p><strong>Solicitado em:</strong> ${formatDateTime(troca.solicitadoEm)}</p>
+      </div>
+      <div class="troca-actions">
+        ${renderizarAcoesTroca(troca)}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderizarTrocasPendentes(trocas) {
+  const container = document.getElementById("listaTrocasPendentes");
+  if (!container) return;
+
+  if (trocas.length === 0) {
+    document.getElementById("trocasPendentes").style.display = "none";
+    return;
+  }
+
+  document.getElementById("trocasPendentes").style.display = "block";
+  container.innerHTML = trocas.map(troca => `
+    <div class="troca-item">
+      <div class="troca-header">
+        <strong>${troca.solicitante?.name} ↔ ${troca.receptor?.name}</strong>
+        <span class="troca-status aceita_receptor">Aguardando Aprovação</span>
+      </div>
+      <div class="troca-detalhes">
+        <p><strong>Data:</strong> ${formatDate(troca.data)} | <strong>Função:</strong> ${troca.funcao}</p>
+        ${troca.observacao ? `<p><strong>Observação:</strong> ${troca.observacao}</p>` : ''}
+      </div>
+      <div class="troca-actions">
+        <button class="btn success" onclick="aprovarTroca(${troca.id}, true)">✅ Aprovar</button>
+        <button class="btn danger" onclick="aprovarTroca(${troca.id}, false)">❌ Recusar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderizarAcoesTroca(troca) {
+  const isReceptor = troca.receptorId === currentUser?.id;
+  const isSolicitante = troca.solicitanteId === currentUser?.id;
+  
+  if (troca.status === "pendente" && isReceptor) {
+    return `
+      <button class="btn success" onclick="responderTroca(${troca.id}, true)">✅ Aceitar</button>
+      <button class="btn danger" onclick="responderTroca(${troca.id}, false)">❌ Recusar</button>
+    `;
+  }
+  
+  return '';
+}
+
+async function responderTroca(trocaId, aceitar) {
+  try {
+    await apiCall(`/trocas/${trocaId}/responder`, {
+      method: "PUT",
+      body: JSON.stringify({ aceitar })
+    });
+
+    await carregarTrocas();
+    showNotification(aceitar ? "Troca aceita!" : "Troca recusada!", "success");
+  } catch (error) {
+    console.error("Erro ao responder troca:", error);
+    showNotification("Erro ao responder troca: " + (error.message || "Erro desconhecido"), "error");
+  }
+}
+
+async function aprovarTroca(trocaId, aprovar) {
+  try {
+    await apiCall(`/trocas/${trocaId}/aprovar`, {
+      method: "PUT",
+      body: JSON.stringify({ aprovar })
+    });
+
+    await carregarTrocas();
+    await carregarEscala(); // Recarregar escala para ver mudanças
+    showNotification(aprovar ? "Troca aprovada!" : "Troca recusada!", "success");
+  } catch (error) {
+    console.error("Erro ao aprovar troca:", error);
+    showNotification("Erro ao aprovar troca: " + (error.message || "Erro desconhecido"), "error");
+  }
+}
+
+// ====== SISTEMA DE HISTÓRICO ======
+async function initHistorico() {
+  const btnFiltrarHistorico = document.getElementById("btnFiltrarHistorico");
+  btnFiltrarHistorico?.addEventListener("click", carregarHistorico);
+
+  await carregarHistorico();
+}
+
+async function carregarHistorico() {
+  try {
+    const userId = document.getElementById("filtroUsuario").value;
+    const acao = document.getElementById("filtroAcao").value;
+    const dataInicio = document.getElementById("filtroDataInicio").value;
+    const dataFim = document.getElementById("filtroDataFim").value;
+
+    let query = "";
+    const params = new URLSearchParams();
+    if (userId) params.append("userId", userId);
+    if (acao) params.append("acao", acao);
+    if (dataInicio) params.append("dataInicio", dataInicio);
+    if (dataFim) params.append("dataFim", dataFim);
+    
+    if (params.toString()) query = "?" + params.toString();
+
+    const response = await apiCall("/historico" + query);
+    const historico = response.data || response;
+    
+    renderizarHistorico(historico);
+  } catch (error) {
+    console.error("Erro ao carregar histórico:", error);
+    showNotification("Erro ao carregar histórico", "error");
+  }
+}
+
+function renderizarHistorico(historico) {
+  const container = document.getElementById("listaHistorico");
+  if (!container) return;
+
+  if (historico.length === 0) {
+    container.innerHTML = '<p>Nenhum registro encontrado.</p>';
+    return;
+  }
+
+  container.innerHTML = historico.map(item => `
+    <div class="historico-item">
+      <div class="historico-header">
+        <span class="historico-acao">${getAcaoDescricao(item.acao)}</span>
+        <span class="historico-data">${formatDateTime(item.data)}</span>
+      </div>
+      <div class="historico-usuario">Por: ${item.user?.name || 'Usuário'}</div>
+      ${item.detalhes ? `<div class="historico-detalhes">${formatDetalhes(item.detalhes)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ====== FUNÇÕES UTILITÁRIAS ======
+function getMonthName(mes) {
+  const meses = [
+    '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  return meses[mes] || mes;
+}
+
+function getStatusTroca(status) {
+  const statusMap = {
+    'pendente': 'Pendente',
+    'aceita_receptor': 'Aceita pelo Receptor',
+    'aprovada': 'Aprovada',
+    'recusada': 'Recusada'
+  };
+  return statusMap[status] || status;
+}
+
+function getAcaoDescricao(acao) {
+  const acoes = {
+    'escala_criada': 'Escala Criada',
+    'escala_aprovada': 'Escala Aprovada',
+    'troca_solicitada': 'Troca Solicitada',
+    'troca_aceita': 'Troca Aceita',
+    'troca_aprovada': 'Troca Aprovada',
+    'troca_recusada': 'Troca Recusada',
+    'musica_adicionada': 'Música Adicionada',
+    'musica_excluida': 'Música Excluída'
+  };
+  return acoes[acao] || acao;
+}
+
+function formatDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('pt-BR');
+}
+
+function formatDateTime(dateStr) {
+  return new Date(dateStr).toLocaleString('pt-BR');
+}
+
+function formatDetalhes(detalhes) {
+  if (typeof detalhes === 'string') {
+    try {
+      detalhes = JSON.parse(detalhes);
+    } catch {
+      return detalhes;
+    }
+  }
+  
+  return Object.entries(detalhes)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(' | ');
+}
+
+// Função de notificação simples
+function showNotification(message, type = 'info') {
+  // Criar elemento de notificação
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  
+  // Estilos inline para a notificação
+  Object.assign(notification.style, {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    padding: '1rem',
+    borderRadius: '8px',
+    color: 'white',
+    fontWeight: '500',
+    zIndex: '9999',
+    maxWidth: '400px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    backgroundColor: type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : '#3498db'
+  });
+  
+  document.body.appendChild(notification);
+  
+  // Remover após 4 segundos
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 4000);
+}
+
+// Função de inicialização principal
+function init() {
+  try {
+    console.log("🚀 Iniciando aplicação Harmonia...");
+    
+    // Verificar token salvo
+    authToken = localStorage.getItem("token");
+    currentUser = JSON.parse(localStorage.getItem("usuario") || "null");
+    console.log("🔑 Token recuperado:", authToken ? "Presente" : "Ausente");
+    console.log("👤 Usuário atual:", currentUser);
+    
+    // Verificar se há dados de autenticação salvos
+    if (loadAuthData()) {
+      showMainApp();
+      // Se estiver logado, carregar dados iniciais
+      setTimeout(() => {
+        if (document.getElementById("escalaMes")) {
+          carregarEscala();
+        }
+      }, 100);
+    } else {
+      showLoginForm();
+    }
+    
+    console.log("✅ Aplicação iniciada com sucesso!");
+    
+  } catch (error) {
+    console.error("❌ Erro na inicialização:", error);
+    showNotification("Erro na inicialização do sistema", "error");
+  }
+}
+
+document.addEventListener("DOMContentLoaded", init);
+

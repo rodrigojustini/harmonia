@@ -1,0 +1,36 @@
+{
+  "name": "harmonia",
+  "version": "1.0.0",
+  "description": "Sistema completo para gerenciar repertório musical, membros da equipe e organização de cultos com autenticação segura e interface moderna.",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev", 
+    "build": "cd backend && npm install && npx prisma generate",
+    "deploy": "cd backend && npx prisma migrate deploy",
+    "test": "echo \"No tests specified yet\""
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rodrigojustini/harmonia.git"
+  },
+  "keywords": [
+    "harmonia",
+    "music", 
+    "schedule",
+    "management",
+    "church",
+    "worship"
+  ],
+  "author": "Rodrigo Justini",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rodrigojustini/harmonia/issues"
+  },
+  "homepage": "https://github.com/rodrigojustini/harmonia#readme",
+  "dependencies": {}
+}

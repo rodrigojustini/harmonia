@@ -17,17 +17,141 @@
     </div>
 
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="musicas">Músicas</button>
-      <button class="tab-btn" data-tab="cultos">Cultos / Mapas</button>
-      <button class="tab-btn" data-tab="membros">Membros</button>
-      <button class="tab-btn" data-tab="aniversarios">Aniversários</button>
-      <button class="tab-btn" data-tab="config">Config</button>
+      <button class="tab-btn active" data-tab="escala">📅 Escala</button>
+      <button class="tab-btn" data-tab="trocas">🔄 Trocas</button>
+      <button class="tab-btn" data-tab="musicas">🎵 Músicas</button>
+      <button class="tab-btn" data-tab="cultos">⛪ Cultos</button>
+      <button class="tab-btn" data-tab="membros">👥 Membros</button>
+      <button class="tab-btn" data-tab="historico">📋 Histórico</button>
+      <button class="tab-btn" data-tab="config">⚙️ Config</button>
     </nav>
   </header>
 
   <main class="app-main">
+    <!-- ESCALA MENSAL -->
+    <section id="escala" class="section active">
+      <div class="section-title">
+        <h2>Escala Mensal</h2>
+        <p>Visualize e gerencie a escala de ministério do mês.</p>
+      </div>
+
+      <div class="card">
+        <div class="escala-controls">
+          <div class="month-selector">
+            <select id="escalaMes">
+              <option value="1">Janeiro</option>
+              <option value="2">Fevereiro</option>
+              <option value="3">Março</option>
+              <option value="4">Abril</option>
+              <option value="5">Maio</option>
+              <option value="6">Junho</option>
+              <option value="7">Julho</option>
+              <option value="8">Agosto</option>
+              <option value="9">Setembro</option>
+              <option value="10">Outubro</option>
+              <option value="11">Novembro</option>
+              <option value="12">Dezembro</option>
+            </select>
+            <select id="escalaAno">
+              <option value="2024">2024</option>
+              <option value="2025" selected>2025</option>
+              <option value="2026">2026</option>
+            </select>
+          </div>
+          <div class="escala-actions">
+            <button class="btn secondary" id="btnCarregarEscala">📅 Carregar Escala</button>
+            <button class="btn primary" id="btnCriarEscala" style="display:none;">➕ Criar Nova Escala</button>
+            <button class="btn success" id="btnAprovarEscala" style="display:none;">✅ Aprovar Escala</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="escalaCalendario" class="escala-calendario">
+        <!-- Calendário será renderizado aqui -->
+      </div>
+
+      <!-- Modal para adicionar música -->
+      <div id="modalAdicionarMusica" class="modal" style="display:none;">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <h3>Adicionar Música ao Dia</h3>
+          <form id="formAdicionarMusica">
+            <input type="hidden" id="musicaData" />
+            <div class="field-group">
+              <label for="musicaTitulo">Título da Música</label>
+              <input id="musicaTituloModal" type="text" required />
+            </div>
+            <div class="field-group">
+              <label for="musicaTomModal">Tom</label>
+              <input id="musicaTomModal" type="text" placeholder="Ex: G, C, D..." />
+            </div>
+            <div class="field-group">
+              <label for="musicaLinkModal">Link (YouTube, CifraClub, etc.)</label>
+              <input id="musicaLinkModal" type="url" placeholder="https://..." />
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn secondary" onclick="fecharModal('modalAdicionarMusica')">Cancelar</button>
+              <button type="submit" class="btn primary">Adicionar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- TROCAS DE ESCALA -->
+    <section id="trocas" class="section">
+      <div class="section-title">
+        <h2>Trocas de Escala</h2>
+        <p>Solicite e gerencie trocas de datas na escala.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Solicitar Troca</h3>
+          <form id="formSolicitarTroca">
+            <div class="field-group">
+              <label for="trocaEscala">Escala</label>
+              <select id="trocaEscala" required>
+                <option value="">Selecione uma escala</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="trocaData">Sua Data (que quer trocar)</label>
+              <input id="trocaData" type="date" required />
+            </div>
+            <div class="field-group">
+              <label for="trocaReceptor">Trocar com</label>
+              <select id="trocaReceptor" required>
+                <option value="">Selecione um membro</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="trocaObservacao">Observação (opcional)</label>
+              <textarea id="trocaObservacao" rows="2" placeholder="Motivo da troca..."></textarea>
+            </div>
+            <button type="submit" class="btn primary">Solicitar Troca</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Minhas Trocas</h3>
+          <div id="listaTrocas" class="list">
+            <!-- Lista de trocas será renderizada aqui -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Cards de Trocas Pendentes (para líderes) -->
+      <div id="trocasPendentes" class="card" style="display:none;">
+        <h3>Trocas Pendentes de Aprovação</h3>
+        <div id="listaTrocasPendentes" class="list">
+          <!-- Lista será renderizada aqui -->
+        </div>
+      </div>
+    </section>
+
     <!-- MÚSICAS -->
-    <section id="musicas" class="section active">
+    <section id="musicas" class="section">
       <div class="section-title">
         <h2>Músicas</h2>
         <p>Cadastre e gerencie o repertório do ministério.</p>
@@ -168,6 +292,49 @@
       </div>
       <div class="card">
         <div id="listaAniversariantes" class="list"></div>
+      </div>
+    </section>
+
+    <!-- HISTÓRICO -->
+    <section id="historico" class="section">
+      <div class="section-title">
+        <h2>Histórico de Ações</h2>
+        <p>Acompanhe todas as ações realizadas no sistema.</p>
+      </div>
+
+      <div class="card">
+        <div class="historico-filters">
+          <div class="filter-group">
+            <label for="filtroUsuario">Usuário:</label>
+            <select id="filtroUsuario">
+              <option value="">Todos os usuários</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filtroAcao">Ação:</label>
+            <select id="filtroAcao">
+              <option value="">Todas as ações</option>
+              <option value="escala_criada">Escala criada</option>
+              <option value="escala_aprovada">Escala aprovada</option>
+              <option value="troca_solicitada">Troca solicitada</option>
+              <option value="troca_aprovada">Troca aprovada</option>
+              <option value="musica_adicionada">Música adicionada</option>
+              <option value="musica_excluida">Música excluída</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filtroDataInicio">De:</label>
+            <input id="filtroDataInicio" type="date" />
+          </div>
+          <div class="filter-group">
+            <label for="filtroDataFim">Até:</label>
+            <input id="filtroDataFim" type="date" />
+          </div>
+          <button class="btn secondary" id="btnFiltrarHistorico">🔍 Filtrar</button>
+        </div>
+        <div id="listaHistorico" class="historico-list">
+          <!-- Histórico será renderizado aqui -->
+        </div>
       </div>
     </section>
 

@@ -1,6 +1,54 @@
 # 🎵 Harmonia - Sistema de Gestão para Ministério de Louvor
 
+# Harmonia - Sistema de Gerenciamento Musical
+
 Sistema completo para gerenciar repertório musical, membros da equipe e organização de cultos com autenticação segura e interface moderna.
+
+## 🚀 Deploy Rápido
+
+### Render.com (Recomendado - Gratuito)
+
+1. **Fork/Clone este repositório**
+2. **Conecte ao Render:**
+   - Acesse [render.com](https://render.com)
+   - Conecte sua conta GitHub
+   - Crie novo Web Service
+   - Conecte este repositório
+
+3. **Configuração do Backend:**
+   ```
+   Build Command: cd backend && npm install && npx prisma generate && npx prisma migrate deploy
+   Start Command: cd backend && npm start
+   Environment: Node
+   ```
+
+4. **Variáveis de Ambiente:**
+   ```
+   NODE_ENV=production
+   PORT=4000
+   JWT_SECRET=seu-jwt-secret-super-seguro-aqui
+   DATABASE_URL=file:./prod.db
+   ```
+
+### Railway (Alternativa)
+
+1. **Deploy com Railway:**
+   ```bash
+   npm install -g @railway/cli
+   railway login
+   railway init
+   railway deploy
+   ```
+
+## 📱 URLs de Produção
+
+- **Frontend:** Será definido após deploy
+- **Backend:** Será definido após deploy
+
+## 🔐 Login Padrão
+
+- **Email:** admin@harmonia.com
+- **Senha:** 123456
 
 ## 🚀 **Funcionalidades**
 
