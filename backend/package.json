@@ -13,6 +13,7 @@
     "prisma:generate": "npx prisma generate",
     "prisma:reset": "npx prisma migrate reset",
     "prisma:studio": "npx prisma studio",
+    "prisma:seed": "node prisma/seed.js",
     "pm2:start": "pm2 start src/server.js --name harmonia-backend",
     "pm2:stop": "pm2 stop harmonia-backend",
     "pm2:restart": "pm2 restart harmonia-backend",
