@@ -73,12 +73,12 @@ app.post("/api/auth/login", async (req, res) => {
     if (!ok) return res.status(401).json({ error: "Senha incorreta" });
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email, name: user.name },
+      { userId: user.id, email: user.email, name: user.name, role: user.role },
       process.env.JWT_SECRET || "supersecret",
       { expiresIn: "7d" }
     );
 
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
     res.status(500).json({ error: "Erro ao autenticar" });
   }
@@ -155,14 +155,31 @@ app.post("/api/cultos", auth, async (req, res) => {
 
 // ======================== ESCALAS ========================
 app.get("/api/escalas", auth, async (req, res) => {
-  const escalas = await prisma.escala.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      membros: { include: { user: true } },
-      musicas: true,
-    },
-  });
-  res.json(escalas);
+  try {
+    const { mes, ano } = req.query;
+    
+    let where = {};
+    if (mes && ano) {
+      where = { 
+        mes: parseInt(mes), 
+        ano: parseInt(ano) 
+      };
+    }
+
+    const escalas = await prisma.escala.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        membros: { include: { user: true } },
+        musicas: true,
+      },
+    });
+    
+    res.json(escalas);
+  } catch (error) {
+    console.error("Erro ao buscar escalas:", error);
+    res.status(500).json({ error: "Erro ao buscar escalas" });
+  }
 });
 
 app.post("/api/escalas", auth, async (req, res) => {
@@ -181,12 +198,71 @@ app.post("/api/escalas", auth, async (req, res) => {
 });
 
 app.put("/api/escalas/:id/aprovar", auth, async (req, res) => {
-  const id = parseInt(req.params.id);
-  const escala = await prisma.escala.update({
-    where: { id },
-    data: { aprovada: true },
-  });
-  res.json(escala);
+  try {
+    const id = parseInt(req.params.id);
+    const escala = await prisma.escala.update({
+      where: { id },
+      data: { aprovada: true },
+    });
+
+    await prisma.historico.create({
+      data: { userId: req.user.userId, acao: "escala_aprovada", detalhes: JSON.stringify({ escalaId: id }) },
+    });
+
+    res.json(escala);
+  } catch (error) {
+    console.error("Erro ao aprovar escala:", error);
+    res.status(500).json({ error: "Erro ao aprovar escala" });
+  }
+});
+
+// Adicionar música à escala
+app.post("/api/escalas/:id/musicas", auth, async (req, res) => {
+  try {
+    const escalaId = parseInt(req.params.id);
+    const { data, titulo, tom, link } = req.body;
+
+    const musica = await prisma.escalaMusica.create({
+      data: {
+        escalaId,
+        data: new Date(data),
+        titulo,
+        tom,
+        link,
+        adicionadoPor: req.user.userId
+      }
+    });
+
+    await prisma.historico.create({
+      data: { userId: req.user.userId, acao: "musica_adicionada", detalhes: titulo },
+    });
+
+    res.status(201).json(musica);
+  } catch (error) {
+    console.error("Erro ao adicionar música:", error);
+    res.status(500).json({ error: "Erro ao adicionar música à escala" });
+  }
+});
+
+// Excluir música da escala
+app.delete("/api/escalas/:id/musicas/:musicaId", auth, async (req, res) => {
+  try {
+    const escalaId = parseInt(req.params.id);
+    const musicaId = parseInt(req.params.musicaId);
+
+    await prisma.escalaMusica.delete({
+      where: { id: musicaId }
+    });
+
+    await prisma.historico.create({
+      data: { userId: req.user.userId, acao: "musica_excluida", detalhes: `Música ID: ${musicaId}` },
+    });
+
+    res.json({ message: "Música excluída com sucesso" });
+  } catch (error) {
+    console.error("Erro ao excluir música:", error);
+    res.status(500).json({ error: "Erro ao excluir música da escala" });
+  }
 });
 
 // ======================== HISTÓRICO ========================

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste API Harmonia</title>
+</head>
+<body>
+    <h1>Teste da API Harmonia</h1>
+    <button onclick="testarLogin()">Testar Login</button>
+    <button onclick="testarEscala()">Testar Carregar Escala</button>
+    <div id="resultado"></div>
+
+    <script>
+        const API_BASE = "http://localhost:4000/api";
+        let token = null;
+
+        async function testarLogin() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: "admin@harmonia.com",
+                        password: "123456"
+                    })
+                });
+
+                const data = await response.json();
+                console.log("Login response:", data);
+                
+                if (data.token) {
+                    token = data.token;
+                    document.getElementById("resultado").innerHTML = `<p>✅ Login OK! Token: ${token.substring(0, 20)}...</p>`;
+                } else {
+                    document.getElementById("resultado").innerHTML = `<p>❌ Login falhou: ${data.error}</p>`;
+                }
+            } catch (error) {
+                console.error("Erro no login:", error);
+                document.getElementById("resultado").innerHTML = `<p>❌ Erro no login: ${error.message}</p>`;
+            }
+        }
+
+        async function testarEscala() {
+            if (!token) {
+                alert("Faça login primeiro!");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/escalas?mes=11&ano=2025`, {
+                    headers: { 
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                const data = await response.json();
+                console.log("Escalas response:", data);
+                
+                document.getElementById("resultado").innerHTML += `<p>✅ Escalas carregadas: ${JSON.stringify(data, null, 2)}</p>`;
+            } catch (error) {
+                console.error("Erro ao carregar escalas:", error);
+                document.getElementById("resultado").innerHTML += `<p>❌ Erro ao carregar escalas: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

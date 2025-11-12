@@ -3,9 +3,15 @@ const fs = require('fs');
 const path = require('path');
 
 const server = http.createServer((req, res) => {
-  let filePath = '.' + req.url;
-  if (filePath === './') {
-    filePath = './index.html';
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  
+  let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
+  
+  // Security check to prevent directory traversal
+  if (!filePath.startsWith(__dirname)) {
+    res.writeHead(403, { 'Content-Type': 'text/html' });
+    res.end('<h1>403 - Forbidden</h1>', 'utf-8');
+    return;
   }
 
   const extname = String(path.extname(filePath)).toLowerCase();
@@ -48,9 +54,9 @@ const server = http.createServer((req, res) => {
   });
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Frontend servidor rodando em:`);
-  console.log(`- Local: http://localhost:${PORT}`);
-  console.log(`- Rede: http://192.168.0.12:${PORT}`);
+  console.log(`✅ Frontend servidor rodando em:`);
+  console.log(`🌐 Local: http://localhost:${PORT}`);
+  console.log(`🔗 Acesse: http://localhost:${PORT}`);
 });

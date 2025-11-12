@@ -278,6 +278,10 @@ function showMainApp() {
   const header = document.querySelector('.app-header');
   header.style.display = 'flex';
   
+  console.log("🚀 Mostrando app principal...");
+  console.log("🔑 Token atual:", authToken ? "Presente" : "Ausente");
+  console.log("👤 Usuário atual:", currentUser);
+  
   // Adicionar informações do usuário
   const existingUserInfo = header.querySelector('.user-info');
   if (!existingUserInfo) {
@@ -1008,23 +1012,32 @@ async function initEscala() {
   btnCriarEscala?.addEventListener("click", criarEscala);
   btnAprovarEscala?.addEventListener("click", aprovarEscala);
   formAdicionarMusica?.addEventListener("submit", adicionarMusicaEscala);
+  
+  // Debug button
+  document.getElementById("btnDebugEscala")?.addEventListener("click", debugEscala);
 
   // Fechar modal ao clicar no X
   document.querySelector("#modalAdicionarMusica .close")?.addEventListener("click", () => {
     fecharModal("modalAdicionarMusica");
   });
 
-  // Carregar escala atual automaticamente
-  await carregarEscala();
+  // NÃO carregar automaticamente - esperar usuário clicar
+  console.log("✅ Sistema de escala inicializado");
 }
 
 async function carregarEscala() {
   try {
     console.log("🔍 Carregando escala...");
+    console.log("🔑 Auth Token no início:", authToken);
+    console.log("👤 Current User:", currentUser);
+    
+    // Mostrar feedback visual
+    showNotification("Carregando escala...", "info");
     
     // Verificar se está logado
     if (!authToken) {
       console.error("❌ Usuário não está logado!");
+      alert("❌ Você precisa fazer login primeiro!");
       showNotification("Faça login para acessar a escala", "error");
       return;
     }
@@ -1053,14 +1066,33 @@ async function carregarEscala() {
       escalaSelecionada = escalaAtual;
       renderizarCalendario(escalaAtual);
       mostrarBotaoAprovar();
+      showNotification(`✅ Escala carregada: ${escalas[0].mes}/${escalas[0].ano}`, "success");
     } else {
-      escalaAtual = null;
-      renderizarCalendarioVazio();
-      mostrarBotaoCriar();
+      // Escala não existe, perguntar se quer criar
+      const mesEl = document.getElementById("escalaMes");
+      const anoEl = document.getElementById("escalaAno");
+      const mes = mesEl.value;
+      const ano = anoEl.value;
+      
+      const confirmar = confirm(`📅 Nenhuma escala encontrada para ${mes}/${ano}.\n\n✨ Deseja criar uma nova escala?`);
+      
+      if (confirmar && currentUser?.role === "leader") {
+        // Criar escala automaticamente
+        await criarEscala();
+      } else if (confirmar && currentUser?.role !== "leader") {
+        alert("❌ Apenas líderes podem criar escalas.");
+        showNotification("Apenas líderes podem criar escalas", "error");
+      } else {
+        escalaAtual = null;
+        renderizarCalendarioVazio();
+        mostrarBotaoCriar();
+        showNotification("Nenhuma escala encontrada para este mês/ano", "info");
+      }
     }
   } catch (error) {
-    console.error("Erro ao carregar escala:", error);
-    showNotification("Erro ao carregar escala", "error");
+    console.error("❌ ERRO COMPLETO ao carregar escala:", error);
+    alert(`❌ ERRO: ${error.message}`);
+    showNotification("Erro ao carregar escala: " + error.message, "error");
   }
 }
 
@@ -1087,7 +1119,10 @@ async function criarEscala() {
     
     console.log(`📅 Criando escala para ${mes}/${ano}`);
     
-    const response = await apiCall("/escalas", "POST", { mes, ano });
+    const response = await apiCall("/escalas", {
+      method: "POST",
+      body: JSON.stringify({ mes, ano })
+    });
 
     escalaAtual = response.data || response;
     escalaSelecionada = escalaAtual;
@@ -1583,6 +1618,48 @@ function formatDetalhes(detalhes) {
     .join(' | ');
 }
 
+// Função de debug para escala
+function debugEscala() {
+  console.log("=== DEBUG ESCALA ===");
+  console.log("🔑 Auth Token:", authToken);
+  console.log("👤 Current User:", currentUser);
+  console.log("🌐 API Base:", API_BASE);
+  
+  const mesEl = document.getElementById("escalaMes");
+  const anoEl = document.getElementById("escalaAno");
+  
+  console.log("📅 Elemento Mês:", mesEl, "Valor:", mesEl?.value);
+  console.log("📅 Elemento Ano:", anoEl, "Valor:", anoEl?.value);
+  
+  // Testar chamada da API diretamente
+  if (authToken) {
+    console.log("🧪 Testando API de escalas...");
+    const testUrl = `${API_BASE}/escalas?mes=11&ano=2025`;
+    console.log("🔗 URL de teste:", testUrl);
+    
+    fetch(testUrl, {
+      headers: {
+        "Authorization": `Bearer ${authToken}`,
+        "Content-Type": "application/json"
+      }
+    })
+    .then(response => {
+      console.log("📡 Response status:", response.status);
+      return response.json();
+    })
+    .then(data => {
+      console.log("📊 Response data:", data);
+      alert(`Debug completo! Verifique o console. Status: ${data.length || 0} escalas encontradas`);
+    })
+    .catch(error => {
+      console.error("❌ Erro na API:", error);
+      alert(`Erro na API: ${error.message}`);
+    });
+  } else {
+    alert("❌ Token não encontrado! Faça login primeiro.");
+  }
+}
+
 // Função de notificação simples
 function showNotification(message, type = 'info') {
   // Criar elemento de notificação
@@ -1621,8 +1698,9 @@ function init() {
     console.log("🚀 Iniciando aplicação Harmonia...");
     
     // Verificar token salvo
-    authToken = localStorage.getItem("token");
-    currentUser = JSON.parse(localStorage.getItem("usuario") || "null");
+    authToken = localStorage.getItem("harmonia_token");
+    const userStr = localStorage.getItem("harmonia_user");
+    currentUser = userStr ? JSON.parse(userStr) : null;
     console.log("🔑 Token recuperado:", authToken ? "Presente" : "Ausente");
     console.log("👤 Usuário atual:", currentUser);
     
