@@ -1,0 +1,23 @@
+name: Deploy to Hetzner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: 5.78.130.43
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/harmonia
+            git pull origin main
+            cd backend
+            npx prisma db push --accept-data-loss
+            node seed.js
+            pm2 restart all
+            echo "✅ Deploy concluído!"

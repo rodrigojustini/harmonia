@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "seed": "node seed.js",
     "build": "echo 'No build step required for Node.js'",
     "test": "echo 'No tests specified yet'",
     "prisma:migrate": "npx prisma migrate dev",
