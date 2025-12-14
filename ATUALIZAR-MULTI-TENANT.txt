@@ -1,0 +1,170 @@
+════════════════════════════════════════════════════════════════
+  🚀 ATUALIZAÇÃO MULTI-TENANT - HARMONIA
+  Servidor: 5.78.130.43
+  Data: 14/12/2025
+════════════════════════════════════════════════════════════════
+
+⚠️ ATENÇÃO: Esta atualização RESETA O BANCO DE DADOS!
+   Todos os dados antigos serão apagados.
+   Um backup será criado automaticamente.
+
+📋 Execute no Console Web do Hetzner:
+   https://console.hetzner.cloud → Seu Servidor → Console
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 1️⃣ BACKUP DO BANCO ATUAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd ~/harmonia/backend/prisma
+cp dev.db dev.db.backup.$(date +%Y%m%d)
+ls -lh *.backup*
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 2️⃣ ATUALIZAR CÓDIGO DO GITHUB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd ~/harmonia
+git pull origin main
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 3️⃣ RESETAR E APLICAR NOVO SCHEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd ~/harmonia/backend
+rm -f prisma/dev.db
+npx prisma generate
+npx prisma migrate dev --name multi-tenant
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 4️⃣ CRIAR IGREJAS E USUÁRIOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+npm run seed
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 5️⃣ REINICIAR APLICAÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pm2 restart all
+pm2 save
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 6️⃣ VERIFICAR LOGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pm2 logs --lines 30
+
+
+════════════════════════════════════════════════════════════════
+  ✅ PRONTO! SISTEMA MULTI-TENANT ATIVADO
+════════════════════════════════════════════════════════════════
+
+🌐 Frontend: http://5.78.130.43:8080
+🔌 Backend:  http://5.78.130.43:4000
+
+🔐 CREDENCIAIS DE ACESSO:
+
+┌─────────────────────────┬──────────────────────────┬───────────┐
+│ Igreja                  │ Email                    │ Senha     │
+├─────────────────────────┼──────────────────────────┼───────────┤
+│ Igreja Verbo da Vida    │ admin@verbo.com          │ admin123  │
+│ Igreja Batista Central  │ admin@batista.com        │ admin123  │
+│ Assembleia de Deus      │ admin@assembleia.com     │ admin123  │
+└─────────────────────────┴──────────────────────────┴───────────┘
+
+
+════════════════════════════════════════════════════════════════
+  ✨ NOVIDADES DO SISTEMA MULTI-TENANT
+════════════════════════════════════════════════════════════════
+
+✅ ISOLAMENTO TOTAL POR IGREJA
+   • Cada igreja vê apenas seus próprios dados
+   • Músicas, membros, cultos e escalas separados
+   • Zero cruzamento de informações
+
+✅ LOGIN AUTOMÁTICO
+   • Sistema identifica automaticamente a igreja do usuário
+   • Não precisa selecionar igreja manualmente
+   • Uma igreja não acessa dados de outra
+
+✅ INTERFACE MELHORADA
+   • Nome da igreja aparece no header
+   • Dados filtrados automaticamente
+   • Experiência limpa e intuitiva
+
+✅ ESCALABILIDADE
+   • Adicione quantas igrejas quiser
+   • Cada igreja pode ter múltiplos usuários
+   • Hierarquia: leader (líder) e member (membro)
+
+
+════════════════════════════════════════════════════════════════
+  📊 COMANDOS ÚTEIS
+════════════════════════════════════════════════════════════════
+
+Ver logs em tempo real:
+pm2 logs
+
+Ver status dos serviços:
+pm2 status
+
+Reiniciar tudo:
+pm2 restart all
+
+Parar tudo:
+pm2 stop all
+
+Atualizar código (depois de git push):
+cd ~/harmonia
+git pull origin main
+pm2 restart all
+
+Ver banco de dados:
+cd ~/harmonia/backend
+npx prisma studio
+# Acesse: http://5.78.130.43:5555
+
+
+════════════════════════════════════════════════════════════════
+  🆘 EM CASO DE ERRO
+════════════════════════════════════════════════════════════════
+
+1. Verificar logs:
+   pm2 logs --lines 100
+
+2. Verificar migrations:
+   cd ~/harmonia/backend
+   ls -la prisma/migrations/
+
+3. Regenerar Prisma Client:
+   cd ~/harmonia/backend
+   npx prisma generate
+
+4. Verificar banco:
+   cd ~/harmonia/backend/prisma
+   ls -lh dev.db
+
+5. Restaurar backup:
+   cd ~/harmonia/backend/prisma
+   cp dev.db.backup.YYYYMMDD dev.db
+   pm2 restart all
+
+
+════════════════════════════════════════════════════════════════
+  📝 PRÓXIMOS PASSOS (OPCIONAL)
+════════════════════════════════════════════════════════════════
+
+• Adicionar mais igrejas via Prisma Studio
+• Criar usuários para cada igreja
+• Personalizar logo e cores por igreja
+• Configurar subdomínios (verbo.harmonia.com)
+• Implementar convites automáticos
+
+
+════════════════════════════════════════════════════════════════
