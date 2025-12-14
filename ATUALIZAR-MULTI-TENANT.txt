@@ -2,11 +2,18 @@
   🚀 ATUALIZAÇÃO MULTI-TENANT - HARMONIA
   Servidor: 5.78.130.43
   Data: 14/12/2025
+  Versão: 2.0 (Multi-Tenant + Correções)
 ════════════════════════════════════════════════════════════════
 
 ⚠️ ATENÇÃO: Esta atualização RESETA O BANCO DE DADOS!
    Todos os dados antigos serão apagados.
    Um backup será criado automaticamente.
+
+✨ NOVIDADES DESTA VERSÃO:
+   • Sistema multi-tenant (cada igreja isolada)
+   • Correção de bug ao criar escalas
+   • Validação de permissões por igreja
+   • Prevenção de escalas duplicadas
 
 📋 Execute no Console Web do Hetzner:
    https://console.hetzner.cloud → Seu Servidor → Console
