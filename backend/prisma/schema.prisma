@@ -7,6 +7,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Igreja {
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique
+  slug      String   @unique
+  ativa     Boolean  @default(true)
+  logo      String?
+  endereco  String?
+  telefone  String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users   User[]
+  musicas Musica[]
+  membros Membro[]
+  cultos  Culto[]
+  escalas Escala[]
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   email        String   @unique
@@ -15,9 +34,11 @@ model User {
   role         String   @default("member")
   funcao       String?
   ativo        Boolean  @default(true)
+  igrejaId     Int
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  igreja             Igreja        @relation(fields: [igrejaId], references: [id])
   cultos             Culto[]
   escalas            Escala[]
   escalaMembros      EscalaMembro[]
@@ -34,9 +55,12 @@ model Musica {
   tomOriginal String?
   link        String?
   observacoes String?
+  igrejaId    Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  cultos      CultoMusica[]
+  
+  igreja Igreja       @relation(fields: [igrejaId], references: [id])
+  cultos CultoMusica[]
 }
 
 model Membro {
@@ -45,8 +69,11 @@ model Membro {
   voz         String?
   funcao      String?
   aniversario DateTime?
+  igrejaId    Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  igreja Igreja @relation(fields: [igrejaId], references: [id])
 }
 
 model Culto {
@@ -54,11 +81,13 @@ model Culto {
   data      DateTime
   nome      String
   shareSlug String   @unique
+  igrejaId  Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userId Int
-  user   User       @relation(fields: [userId], references: [id])
+  igreja  Igreja @relation(fields: [igrejaId], references: [id])
+  userId  Int
+  user    User         @relation(fields: [userId], references: [id])
   musicas CultoMusica[]
 }
 
@@ -78,15 +107,17 @@ model Escala {
   ano       Int
   aprovada  Boolean  @default(false)
   criadaPor Int
+  igrejaId  Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  igreja  Igreja        @relation(fields: [igrejaId], references: [id])
   criador User          @relation(fields: [criadaPor], references: [id])
   membros EscalaMembro[]
   musicas EscalaMusica[]
   trocas  TrocaEscala[]
 
-  @@unique([mes, ano])
+  @@unique([mes, ano, igrejaId])
 }
 
 model EscalaMembro {

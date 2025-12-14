@@ -29,6 +29,21 @@ function auth(req, res, next) {
   }
 }
 
+// Middleware para obter igrejaId do usuário
+async function getIgrejaId(req, res, next) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { igrejaId: true }
+    });
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+    req.igrejaId = user.igrejaId;
+    next();
+  } catch (err) {
+    return res.status(500).json({ error: "Erro ao obter dados da igreja" });
+  }
+}
+
 // Função para gerar slug de compartilhamento
 function generateSlug() {
   return crypto.randomBytes(6).toString("hex");
@@ -66,35 +81,69 @@ app.post("/api/auth/register", async (req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ 
+      where: { email },
+      include: { igreja: true }
+    });
     if (!user) return res.status(401).json({ error: "Usuário não encontrado" });
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(401).json({ error: "Senha incorreta" });
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email, name: user.name, role: user.role },
+      { 
+        userId: user.id, 
+        email: user.email, 
+        name: user.name, 
+        role: user.role,
+        igrejaId: user.igrejaId,
+        igrejaNome: user.igreja.nome
+      },
       process.env.JWT_SECRET || "supersecret",
       { expiresIn: "7d" }
     );
 
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        igreja: {
+          id: user.igreja.id,
+          nome: user.igreja.nome,
+          slug: user.igreja.slug
+        }
+      } 
+    });
   } catch (err) {
     res.status(500).json({ error: "Erro ao autenticar" });
   }
 });
 
 // ======================== MÚSICAS ========================
-app.get("/api/musicas", auth, async (req, res) => {
-  const musicas = await prisma.musica.findMany({ orderBy: { titulo: "asc" } });
+app.get("/api/musicas", auth, getIgrejaId, async (req, res) => {
+  const musicas = await prisma.musica.findMany({ 
+    where: { igrejaId: req.igrejaId },
+    orderBy: { titulo: "asc" } 
+  });
   res.json(musicas);
 });
 
-app.post("/api/musicas", auth, async (req, res) => {
+app.post("/api/musicas", auth, getIgrejaId, async (req, res) => {
   const { titulo, tomOriginal, link, observacoes } = req.body;
   if (!titulo) return res.status(400).json({ error: "Título obrigatório" });
 
-  const musica = await prisma.musica.create({ data: { titulo, tomOriginal, link, observacoes } });
+  const musica = await prisma.musica.create({ 
+    data: { 
+      titulo, 
+      tomOriginal, 
+      link, 
+      observacoes,
+      igrejaId: req.igrejaId 
+    } 
+  });
 
   await prisma.historico.create({
     data: { userId: req.user.userId, acao: "musica_adicionada", detalhes: titulo },
@@ -104,32 +153,42 @@ app.post("/api/musicas", auth, async (req, res) => {
 });
 
 // ======================== MEMBROS ========================
-app.get("/api/membros", auth, async (req, res) => {
-  const membros = await prisma.membro.findMany({ orderBy: { nome: "asc" } });
+app.get("/api/membros", auth, getIgrejaId, async (req, res) => {
+  const membros = await prisma.membro.findMany({ 
+    where: { igrejaId: req.igrejaId },
+    orderBy: { nome: "asc" } 
+  });
   res.json(membros);
 });
 
-app.post("/api/membros", auth, async (req, res) => {
+app.post("/api/membros", auth, getIgrejaId, async (req, res) => {
   const { nome, voz, funcao, aniversario } = req.body;
   if (!nome) return res.status(400).json({ error: "Nome obrigatório" });
 
   const membro = await prisma.membro.create({
-    data: { nome, voz, funcao, aniversario: aniversario ? new Date(aniversario) : null },
+    data: { 
+      nome, 
+      voz, 
+      funcao, 
+      aniversario: aniversario ? new Date(aniversario) : null,
+      igrejaId: req.igrejaId 
+    },
   });
 
   res.status(201).json(membro);
 });
 
 // ======================== CULTOS ========================
-app.get("/api/cultos", auth, async (req, res) => {
+app.get("/api/cultos", auth, getIgrejaId, async (req, res) => {
   const cultos = await prisma.culto.findMany({
+    where: { igrejaId: req.igrejaId },
     orderBy: { data: "desc" },
     include: { musicas: { include: { musica: true }, orderBy: { ordem: "asc" } } },
   });
   res.json(cultos);
 });
 
-app.post("/api/cultos", auth, async (req, res) => {
+app.post("/api/cultos", auth, getIgrejaId, async (req, res) => {
   const { data, nome, musicaIds } = req.body;
   if (!data || !nome || !musicaIds?.length)
     return res.status(400).json({ error: "Data, nome e músicas são obrigatórios" });
@@ -140,6 +199,7 @@ app.post("/api/cultos", auth, async (req, res) => {
       nome,
       shareSlug: generateSlug(),
       userId: req.user.userId,
+      igrejaId: req.igrejaId,
       musicas: {
         create: musicaIds.map((musicaId, i) => ({
           ordem: i + 1,
@@ -154,13 +214,14 @@ app.post("/api/cultos", auth, async (req, res) => {
 });
 
 // ======================== ESCALAS ========================
-app.get("/api/escalas", auth, async (req, res) => {
+app.get("/api/escalas", auth, getIgrejaId, async (req, res) => {
   try {
     const { mes, ano } = req.query;
     
-    let where = {};
+    let where = { igrejaId: req.igrejaId };
     if (mes && ano) {
       where = { 
+        ...where,
         mes: parseInt(mes), 
         ano: parseInt(ano) 
       };
@@ -182,12 +243,17 @@ app.get("/api/escalas", auth, async (req, res) => {
   }
 });
 
-app.post("/api/escalas", auth, async (req, res) => {
+app.post("/api/escalas", auth, getIgrejaId, async (req, res) => {
   const { mes, ano } = req.body;
   if (!mes || !ano) return res.status(400).json({ error: "Mês e ano obrigatórios" });
 
   const escala = await prisma.escala.create({
-    data: { mes, ano, criadaPor: req.user.userId },
+    data: { 
+      mes, 
+      ano, 
+      criadaPor: req.user.userId,
+      igrejaId: req.igrejaId 
+    },
   });
 
   await prisma.historico.create({

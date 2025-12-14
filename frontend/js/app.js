@@ -293,7 +293,8 @@ function showMainApp() {
     userInfo.style.gap = '1rem';
     
     const userSpan = document.createElement('span');
-    userSpan.textContent = `${currentUser?.name || 'Usuário'} ${currentUser?.role === 'leader' ? '(Líder)' : '(Membro)'}`;
+    const igrejaInfo = currentUser?.igreja ? ` | ${currentUser.igreja.nome}` : '';
+    userSpan.textContent = `${currentUser?.name || 'Usuário'}${igrejaInfo} ${currentUser?.role === 'leader' ? '(Líder)' : '(Membro)'}`;
     userSpan.style.fontSize = '0.9rem';
     
     const logoutBtn = document.createElement('button');
