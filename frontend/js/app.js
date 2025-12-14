@@ -1125,8 +1125,12 @@ async function criarEscala() {
       body: JSON.stringify({ mes, ano })
     });
 
-    escalaAtual = response.data || response;
+    // A resposta já vem como o objeto escala diretamente
+    escalaAtual = response;
     escalaSelecionada = escalaAtual;
+    
+    console.log("✅ Escala criada:", escalaAtual);
+    
     renderizarCalendario(escalaAtual);
     mostrarBotaoAprovar();
     showNotification("Escala criada com sucesso!", "success");

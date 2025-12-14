@@ -244,31 +244,75 @@ app.get("/api/escalas", auth, getIgrejaId, async (req, res) => {
 });
 
 app.post("/api/escalas", auth, getIgrejaId, async (req, res) => {
-  const { mes, ano } = req.body;
-  if (!mes || !ano) return res.status(400).json({ error: "Mês e ano obrigatórios" });
+  try {
+    const { mes, ano } = req.body;
+    if (!mes || !ano) return res.status(400).json({ error: "Mês e ano obrigatórios" });
 
-  const escala = await prisma.escala.create({
-    data: { 
-      mes, 
-      ano, 
-      criadaPor: req.user.userId,
-      igrejaId: req.igrejaId 
-    },
-  });
+    // Verificar se já existe escala para este mês/ano/igreja
+    const escalaExistente = await prisma.escala.findUnique({
+      where: { 
+        mes_ano_igrejaId: { 
+          mes, 
+          ano, 
+          igrejaId: req.igrejaId 
+        } 
+      }
+    });
 
-  await prisma.historico.create({
-    data: { userId: req.user.userId, acao: "escala_criada", detalhes: JSON.stringify({ mes, ano }) },
-  });
+    if (escalaExistente) {
+      return res.status(400).json({ 
+        error: "Já existe uma escala para este mês/ano",
+        data: escalaExistente 
+      });
+    }
 
-  res.status(201).json(escala);
+    const escala = await prisma.escala.create({
+      data: { 
+        mes, 
+        ano, 
+        criadaPor: req.user.userId,
+        igrejaId: req.igrejaId 
+      },
+      include: {
+        membros: { include: { user: true } },
+        musicas: true,
+      }
+    });
+
+    await prisma.historico.create({
+      data: { userId: req.user.userId, acao: "escala_criada", detalhes: JSON.stringify({ mes, ano }) },
+    });
+
+    res.status(201).json(escala);
+  } catch (error) {
+    console.error("Erro ao criar escala:", error);
+    res.status(500).json({ error: "Erro ao criar escala: " + error.message });
+  }
 });
 
-app.put("/api/escalas/:id/aprovar", auth, async (req, res) => {
+app.put("/api/escalas/:id/aprovar", auth, getIgrejaId, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    
+    // Verificar se a escala pertence à igreja do usuário
+    const escalaExistente = await prisma.escala.findFirst({
+      where: { 
+        id,
+        igrejaId: req.igrejaId 
+      }
+    });
+
+    if (!escalaExistente) {
+      return res.status(404).json({ error: "Escala não encontrada ou sem permissão" });
+    }
+
     const escala = await prisma.escala.update({
       where: { id },
       data: { aprovada: true },
+      include: {
+        membros: { include: { user: true } },
+        musicas: true,
+      }
     });
 
     await prisma.historico.create({
@@ -283,10 +327,22 @@ app.put("/api/escalas/:id/aprovar", auth, async (req, res) => {
 });
 
 // Adicionar música à escala
-app.post("/api/escalas/:id/musicas", auth, async (req, res) => {
+app.post("/api/escalas/:id/musicas", auth, getIgrejaId, async (req, res) => {
   try {
     const escalaId = parseInt(req.params.id);
     const { data, titulo, tom, link } = req.body;
+
+    // Verificar se a escala pertence à igreja do usuário
+    const escalaExistente = await prisma.escala.findFirst({
+      where: { 
+        id: escalaId,
+        igrejaId: req.igrejaId 
+      }
+    });
+
+    if (!escalaExistente) {
+      return res.status(404).json({ error: "Escala não encontrada ou sem permissão" });
+    }
 
     const musica = await prisma.escalaMusica.create({
       data: {
@@ -311,10 +367,22 @@ app.post("/api/escalas/:id/musicas", auth, async (req, res) => {
 });
 
 // Excluir música da escala
-app.delete("/api/escalas/:id/musicas/:musicaId", auth, async (req, res) => {
+app.delete("/api/escalas/:id/musicas/:musicaId", auth, getIgrejaId, async (req, res) => {
   try {
     const escalaId = parseInt(req.params.id);
     const musicaId = parseInt(req.params.musicaId);
+
+    // Verificar se a escala pertence à igreja do usuário
+    const escalaExistente = await prisma.escala.findFirst({
+      where: { 
+        id: escalaId,
+        igrejaId: req.igrejaId 
+      }
+    });
+
+    if (!escalaExistente) {
+      return res.status(404).json({ error: "Escala não encontrada ou sem permissão" });
+    }
 
     await prisma.escalaMusica.delete({
       where: { id: musicaId }
