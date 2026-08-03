@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Definir senha - Harmonia</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body style="background:#0d0d0d; min-height:100vh; display:flex; align-items:center; justify-content:center;">
+
+  <div style="max-width: 400px; width: 90%; margin: 2rem auto; padding: 2rem; background: #1a1a1a; border-radius: 1rem;">
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <div class="logo-circle" style="margin: 0 auto 1rem;">H</div>
+      <h1 style="margin: 0; color: #fff;">Harmonia</h1>
+      <p style="color: #bbb; margin: 0.5rem 0 0;" id="subtitulo">Bem-vindo! Crie sua senha para acessar.</p>
+    </div>
+
+    <form id="formSenha">
+      <div class="field-group">
+        <label for="novaSenha">Nova senha</label>
+        <input id="novaSenha" type="password" required minlength="6">
+      </div>
+      <div class="field-group">
+        <label for="confirmarSenha">Confirmar senha</label>
+        <input id="confirmarSenha" type="password" required minlength="6">
+      </div>
+      <button type="submit" class="btn primary" style="width: 100%;">Criar senha e entrar</button>
+    </form>
+
+    <div id="mensagem" style="margin-top: 1rem; padding: 0.5rem; border-radius: 0.5rem; display: none;"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script>
+    const msgEl = document.getElementById("mensagem");
+
+    function mostrarMensagem(texto, cor) {
+      msgEl.style.display = "block";
+      msgEl.style.background = cor;
+      msgEl.style.color = "#fff";
+      msgEl.textContent = texto;
+    }
+
+    // supabase-js já captura a sessão do link do e-mail automaticamente
+    // (detectSessionInUrl é o padrão). Só confirmamos que deu certo.
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        mostrarMensagem("Link inválido ou expirado. Peça um novo convite ao líder da sua equipe.", "#dc2626");
+        document.getElementById("formSenha").style.display = "none";
+      }
+    })();
+
+    document.getElementById("formSenha").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const senha = document.getElementById("novaSenha").value;
+      const confirmar = document.getElementById("confirmarSenha").value;
+
+      if (senha !== confirmar) {
+        mostrarMensagem("As senhas não coincidem.", "#dc2626");
+        return;
+      }
+
+      mostrarMensagem("Salvando...", "#2563eb");
+
+      const { error } = await supabase.auth.updateUser({ password: senha });
+      if (error) {
+        mostrarMensagem("Erro ao definir senha: " + error.message, "#dc2626");
+        return;
+      }
+
+      mostrarMensagem("Senha criada! Redirecionando...", "#059669");
+      setTimeout(() => { window.location.href = "index.html"; }, 1500);
+    });
+  </script>
+</body>
+</html>

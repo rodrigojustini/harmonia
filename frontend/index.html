@@ -346,6 +346,30 @@
         <p>Opções gerais do app.</p>
       </div>
 
+      <div class="card" id="cardConvidarMembro" style="display:none;">
+        <h3>Convidar membro para a equipe</h3>
+        <p><small>O membro recebe um e-mail com um link pra criar a própria senha e acessar o Harmonia.</small></p>
+        <form id="formConvidarMembro">
+          <div class="field-group">
+            <label for="convidarNome">Nome</label>
+            <input id="convidarNome" type="text" required>
+          </div>
+          <div class="field-group">
+            <label for="convidarEmail">E-mail</label>
+            <input id="convidarEmail" type="email" required>
+          </div>
+          <div class="field-group">
+            <label for="convidarFuncao">Função (ex: Vocal, Guitarra, Bateria)</label>
+            <input id="convidarFuncao" type="text">
+          </div>
+          <button type="submit" class="btn primary">Enviar convite por e-mail</button>
+        </form>
+        <div id="convidarMensagem" style="margin-top:0.75rem; display:none;"></div>
+        <h4 style="margin-top:1.5rem;">Código de convite da igreja</h4>
+        <p><small>Alternativa: compartilhe este código pra alguém criar a própria conta escolhendo "Já tenho um código de convite".</small></p>
+        <div id="codigoConvite" style="font-family:monospace; font-size:1.1rem; background:#111; padding:0.5rem 1rem; border-radius:0.5rem; display:inline-block;"></div>
+      </div>
+
       <div class="card">
         <h3>Tela ligada</h3>
         <p>

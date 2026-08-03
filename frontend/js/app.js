@@ -418,7 +418,7 @@ async function handleLogin(e) {
     messageEl.textContent = 'Fazendo login...';
     
     await login(email, password);
-    showMainApp();
+    window.location.reload();
   } catch (error) {
     messageEl.style.background = '#dc2626';
     messageEl.textContent = error.message;
@@ -1116,6 +1116,51 @@ async function requestWakeLock() {
 }
 
 function initConfig() {
+  const cardConvidar = document.getElementById("cardConvidarMembro");
+  if (currentUser?.role === "leader") {
+    cardConvidar.style.display = "block";
+    document.getElementById("codigoConvite").textContent = currentUser.igreja?.convite_codigo || "—";
+
+    const formConvidar = document.getElementById("formConvidarMembro");
+    formConvidar.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nome = document.getElementById("convidarNome").value.trim();
+      const email = document.getElementById("convidarEmail").value.trim();
+      const funcao = document.getElementById("convidarFuncao").value.trim();
+      const msgEl = document.getElementById("convidarMensagem");
+      const btn = formConvidar.querySelector("button[type=submit]");
+
+      msgEl.style.display = "block";
+      msgEl.style.background = "#2563eb";
+      msgEl.style.color = "#fff";
+      msgEl.textContent = "Enviando convite...";
+      btn.disabled = true;
+
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/functions/v1/convidar-membro`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`,
+            "apikey": SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ nome, email, funcao, siteUrl: window.location.origin }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || "Erro ao enviar convite.");
+
+        msgEl.style.background = "#059669";
+        msgEl.textContent = `Convite enviado para ${email}! Peça pra conferir a caixa de entrada (e o spam).`;
+        formConvidar.reset();
+      } catch (error) {
+        msgEl.style.background = "#dc2626";
+        msgEl.textContent = error.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
   const btnWakeLock = document.getElementById("btnWakeLock");
   btnWakeLock.addEventListener("click", requestWakeLock);
 
