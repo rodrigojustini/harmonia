@@ -1,45 +1,24 @@
-// ====== CONFIGURAÇÃO DA API ======
-// Detectar automaticamente o IP correto
-function getApiBase() {
-  const hostname = window.location.hostname;
-  
-  // Se acessando via IP 192.168.0.12, usar esse IP para o backend também
-  if (hostname === '192.168.0.12') {
-    return 'http://192.168.0.12:4000/api';
-  }
-  
-  // Se acessando via localhost ou 127.0.0.1, usar localhost
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:4000/api';
-  }
-  
-  // Para outros casos, tentar detectar dinamicamente
-  return `http://${hostname}:4000/api`;
-}
+// ====== CAMADA DE DADOS: SUPABASE (Auth + Postgres com RLS) ======
+// O cliente `supabase` vem de js/supabase-config.js (carregado antes deste arquivo).
+// Esta camada mantém a MESMA interface que o resto do app.js já usa
+// (apiCall, login, register, logout, authToken, currentUser) para que nenhuma
+// outra função precise ser alterada — só o "encanamento" mudou.
 
-const API_BASE = getApiBase();
-console.log("🌐 API Base configurada para:", API_BASE);
-console.log("🌍 Hostname atual:", window.location.hostname);
-
-// ====== GESTÃO DE AUTENTICAÇÃO ======
 let currentUser = null;
-let authToken = null;
+let authToken = null; // usado só como flag "está logado" pelo resto do app
 
 function saveAuthData(token, user) {
   authToken = token;
   currentUser = user;
-  localStorage.setItem("harmonia_token", token);
   localStorage.setItem("harmonia_user", JSON.stringify(user));
 }
 
 function loadAuthData() {
-  const token = localStorage.getItem("harmonia_token");
   const userStr = localStorage.getItem("harmonia_user");
-  
-  if (token && userStr) {
+  if (userStr) {
     try {
-      authToken = token;
       currentUser = JSON.parse(userStr);
+      authToken = "supabase-session"; // presença = logado; sessão real fica no supabase-js
       return true;
     } catch (e) {
       clearAuthData();
@@ -52,79 +31,252 @@ function loadAuthData() {
 function clearAuthData() {
   authToken = null;
   currentUser = null;
-  localStorage.removeItem("harmonia_token");
   localStorage.removeItem("harmonia_user");
 }
 
-function getAuthHeaders() {
-  return authToken ? { "Authorization": `Bearer ${authToken}` } : {};
-}
+// Monta o objeto currentUser (igual formato do backend antigo) a partir do
+// usuário logado no Supabase Auth + sua linha em `perfis`.
+async function montarCurrentUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
 
-// ====== FUNÇÕES DE API ======
-async function apiCall(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
-  const config = {
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-      ...options.headers,
-    },
-    ...options,
+  const { data: perfil, error } = await supabase
+    .from("perfis")
+    .select("*, igreja:igrejas(id, nome, slug, convite_codigo)")
+    .eq("id", user.id)
+    .single();
+
+  if (error || !perfil) throw new Error("Perfil não encontrado para este usuário.");
+
+  return {
+    id: perfil.id,
+    name: perfil.nome,
+    email: perfil.email,
+    role: perfil.role === "admin" ? "leader" : "member",
+    funcao: perfil.funcao,
+    igreja: perfil.igreja,
   };
-
-  try {
-    const response = await fetch(url, config);
-    
-    if (response.status === 401) {
-      clearAuthData();
-      showLoginForm();
-      throw new Error("Sessão expirada. Faça login novamente.");
-    }
-
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error || `Erro HTTP ${response.status}`);
-    }
-    
-    return data;
-  } catch (error) {
-    console.error("Erro na API:", error);
-    throw error;
-  }
 }
 
 // ====== AUTENTICAÇÃO ======
 async function login(email, password) {
-  try {
-    const data = await apiCall("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    
-    saveAuthData(data.token, data.user);
-    return data;
-  } catch (error) {
-    throw error;
-  }
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message === "Invalid login credentials" ? "E-mail ou senha incorretos." : error.message);
+
+  const user = await montarCurrentUser();
+  saveAuthData(data.session.access_token, user);
+  return { token: data.session.access_token, user };
 }
 
-async function register(name, email, password) {
-  try {
-    const data = await apiCall("/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ name, email, password }),
-    });
-    
-    return data;
-  } catch (error) {
-    throw error;
+// modoIgreja: "criar" (cria igreja nova, usuário vira admin) ou "entrar" (usa código de convite)
+async function register(name, email, password, modoIgreja, igrejaCampo) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) throw new Error(error.message === "User already registered" ? "E-mail já cadastrado." : error.message);
+  if (!data.session) {
+    throw new Error("Conta criada, mas a confirmação de e-mail está ativa no projeto. Desative 'Confirm email' em Authentication > Providers no Supabase para testar hoje, ou confirme o e-mail recebido antes de continuar.");
   }
+
+  const userId = data.user.id;
+  let igrejaId;
+  let role = "member";
+
+  if (modoIgreja === "criar") {
+    const nomeIgreja = igrejaCampo.trim();
+    if (!nomeIgreja) throw new Error("Informe o nome da igreja.");
+    const slug = nomeIgreja.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Math.random().toString(36).slice(2, 6);
+
+    const { data: igreja, error: igrejaErr } = await supabase
+      .from("igrejas")
+      .insert({ owner_user_id: userId, nome: nomeIgreja, slug })
+      .select()
+      .single();
+    if (igrejaErr) throw new Error("Erro ao criar igreja: " + igrejaErr.message);
+
+    igrejaId = igreja.id;
+    role = "admin";
+  } else {
+    const codigo = igrejaCampo.trim();
+    if (!codigo) throw new Error("Informe o código de convite da igreja.");
+    const { data: igreja, error: igrejaErr } = await supabase
+      .from("igrejas")
+      .select("id")
+      .eq("convite_codigo", codigo)
+      .single();
+    if (igrejaErr || !igreja) throw new Error("Código de convite inválido.");
+    igrejaId = igreja.id;
+  }
+
+  const { error: perfilErr } = await supabase
+    .from("perfis")
+    .insert({ id: userId, igreja_id: igrejaId, nome: name, email, role });
+  if (perfilErr) throw new Error("Erro ao criar perfil: " + perfilErr.message);
+
+  return { ok: true };
 }
 
-function logout() {
+async function logout() {
+  await supabase.auth.signOut();
   clearAuthData();
   showLoginForm();
+}
+
+// ====== SHIM DE API ======
+// Traduz as chamadas antigas `apiCall("/endpoint", {...})` para o Supabase,
+// mantendo o restante do app.js (renderização, regras de negócio) intacto.
+async function apiCall(endpoint, options = {}) {
+  const method = options.method || "GET";
+  const body = options.body ? JSON.parse(options.body) : null;
+  const [path, queryStr] = endpoint.split("?");
+  const params = new URLSearchParams(queryStr || "");
+
+  try {
+    // ---- MÚSICAS ----
+    if (path === "/musicas" && method === "GET") {
+      const { data, error } = await supabase.from("musicas").select("*").order("criado_em");
+      if (error) throw error;
+      return data.map(m => ({ id: m.id, titulo: m.titulo, tomOriginal: m.tom_original, link: m.link, observacoes: m.observacoes }));
+    }
+    if (path === "/musicas" && method === "POST") {
+      const { data, error } = await supabase.from("musicas").insert({
+        igreja_id: currentUser.igreja.id, titulo: body.titulo, tom_original: body.tomOriginal,
+        link: body.link, observacoes: body.observacoes,
+      }).select().single();
+      if (error) throw error;
+      return { id: data.id, titulo: data.titulo, tomOriginal: data.tom_original, link: data.link, observacoes: data.observacoes };
+    }
+
+    // ---- MEMBROS ----
+    if (path === "/membros" && method === "GET") {
+      const { data, error } = await supabase.from("membros").select("*").order("nome");
+      if (error) throw error;
+      return data;
+    }
+    if (path === "/membros" && method === "POST") {
+      const { data, error } = await supabase.from("membros").insert({
+        igreja_id: currentUser.igreja.id, nome: body.nome, voz: body.voz,
+        funcao: body.funcao, aniversario: body.aniversario,
+      }).select().single();
+      if (error) throw error;
+      return data;
+    }
+
+    // ---- CULTOS ----
+    if (path === "/cultos" && method === "GET") {
+      const { data, error } = await supabase.from("cultos").select("*, culto_musicas(musica_id, ordem)").order("data", { ascending: false });
+      if (error) throw error;
+      return data.map(c => ({ id: c.id, data: c.data, nome: c.nome, shareSlug: c.share_slug, musicaIds: c.culto_musicas.map(cm => cm.musica_id) }));
+    }
+    if (path === "/cultos" && method === "POST") {
+      const { data: culto, error } = await supabase.from("cultos").insert({
+        igreja_id: currentUser.igreja.id, data: body.data, nome: body.nome, criado_por: currentUser.id,
+      }).select().single();
+      if (error) throw error;
+      if (body.musicaIds?.length) {
+        const linhas = body.musicaIds.map((mid, i) => ({ igreja_id: currentUser.igreja.id, culto_id: culto.id, musica_id: mid, ordem: i + 1 }));
+        const { error: cmErr } = await supabase.from("culto_musicas").insert(linhas);
+        if (cmErr) throw cmErr;
+      }
+      return culto;
+    }
+
+    // ---- ESCALAS ----
+    if (path === "/escalas" && method === "GET" && params.has("mes")) {
+      const { data, error } = await supabase.from("escalas").select("*")
+        .eq("mes", Number(params.get("mes"))).eq("ano", Number(params.get("ano")));
+      if (error) throw error;
+      return data;
+    }
+    if (path === "/escalas" && method === "GET") {
+      const { data, error } = await supabase.from("escalas").select("*").order("ano", { ascending: false }).order("mes", { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+    if (path === "/escalas" && method === "POST") {
+      const { data, error } = await supabase.from("escalas").insert({
+        igreja_id: currentUser.igreja.id, mes: body.mes, ano: body.ano, criado_por: currentUser.id,
+      }).select().single();
+      if (error) throw error;
+      return data;
+    }
+    let m;
+    if ((m = path.match(/^\/escalas\/(.+)\/aprovar$/)) && method === "PUT") {
+      const { error } = await supabase.from("escalas").update({ aprovada: true }).eq("id", m[1]);
+      if (error) throw error;
+      return { ok: true };
+    }
+    if ((m = path.match(/^\/escalas\/(.+)\/musicas$/)) && method === "POST") {
+      const { data, error } = await supabase.from("escala_musicas").insert({
+        igreja_id: currentUser.igreja.id, escala_id: m[1], data: body.data, titulo: body.titulo,
+        tom: body.tom, link: body.link, adicionado_por: currentUser.id,
+      }).select().single();
+      if (error) throw error;
+      return data;
+    }
+    if ((m = path.match(/^\/escalas\/(.+)\/musicas\/(.+)$/)) && method === "DELETE") {
+      const { error } = await supabase.from("escala_musicas").delete().eq("id", m[2]);
+      if (error) throw error;
+      return { ok: true };
+    }
+    if ((m = path.match(/^\/escalas\/(.+)\/trocas$/)) && method === "POST") {
+      const { data, error } = await supabase.from("trocas_escala").insert({
+        igreja_id: currentUser.igreja.id, escala_id: m[1], solicitante_id: currentUser.id,
+        receptor_id: body.receptorId, data: body.data, funcao: body.funcao, observacao: body.observacao,
+      }).select().single();
+      if (error) throw error;
+      return data;
+    }
+
+    // ---- PERFIL ----
+    if (path === "/auth/perfil" && method === "GET") {
+      const { data, error } = await supabase.from("perfis").select("*").eq("igreja_id", currentUser.igreja.id);
+      if (error) throw error;
+      return data;
+    }
+
+    // ---- TROCAS ----
+    if (path === "/trocas" && method === "GET") {
+      const { data, error } = await supabase.from("trocas_escala")
+        .select("*, solicitante:perfis!trocas_escala_solicitante_id_fkey(id, nome), receptor:perfis!trocas_escala_receptor_id_fkey(id, nome)")
+        .order("solicitado_em", { ascending: false });
+      if (error) throw error;
+      return data.map(t => ({
+        id: t.id, status: t.status, data: t.data, funcao: t.funcao, observacao: t.observacao,
+        solicitadoEm: t.solicitado_em, solicitanteId: t.solicitante_id, receptorId: t.receptor_id,
+        solicitante: t.solicitante ? { name: t.solicitante.nome } : null,
+        receptor: t.receptor ? { name: t.receptor.nome } : null,
+      }));
+    }
+    if ((m = path.match(/^\/trocas\/(.+)\/responder$/)) && method === "PUT") {
+      const novoStatus = body.aceitar ? "aceita_receptor" : "recusada";
+      const { error } = await supabase.from("trocas_escala").update({ status: novoStatus, aceito_em: new Date().toISOString() }).eq("id", m[1]);
+      if (error) throw error;
+      return { ok: true };
+    }
+    if ((m = path.match(/^\/trocas\/(.+)\/aprovar$/)) && method === "PUT") {
+      const novoStatus = body.aprovar ? "aprovada" : "recusada";
+      const { error } = await supabase.from("trocas_escala").update({ status: novoStatus, aprovado_em: new Date().toISOString(), aprovado_por: currentUser.id }).eq("id", m[1]);
+      if (error) throw error;
+      return { ok: true };
+    }
+
+    // ---- HISTÓRICO ----
+    if (path === "/historico" && method === "GET") {
+      let q = supabase.from("historico").select("*").order("data", { ascending: false }).limit(200);
+      if (params.get("userId")) q = q.eq("user_id", params.get("userId"));
+      if (params.get("acao")) q = q.ilike("acao", `%${params.get("acao")}%`);
+      if (params.get("dataInicio")) q = q.gte("data", params.get("dataInicio"));
+      if (params.get("dataFim")) q = q.lte("data", params.get("dataFim"));
+      const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    }
+
+    throw new Error(`Endpoint não mapeado: ${method} ${path}`);
+  } catch (error) {
+    console.error("Erro na API (Supabase):", error);
+    throw new Error(error.message || "Erro inesperado.");
+  }
 }
 
 // ====== CHAVES LOCALSTORAGE (BACKUP) ======
@@ -205,6 +357,19 @@ function showLoginForm() {
             <label for="registerPassword">Senha</label>
             <input id="registerPassword" type="password" required minlength="6">
           </div>
+          <div class="field-group">
+            <label style="display:block; margin-bottom:0.5rem;">Sua igreja</label>
+            <label style="display:flex; align-items:center; gap:0.5rem; color:#ddd; font-weight:normal; margin-bottom:0.4rem;">
+              <input type="radio" name="modoIgreja" value="criar" checked> Cadastrar minha igreja agora (você vira admin)
+            </label>
+            <label style="display:flex; align-items:center; gap:0.5rem; color:#ddd; font-weight:normal;">
+              <input type="radio" name="modoIgreja" value="entrar"> Já tenho um código de convite
+            </label>
+          </div>
+          <div class="field-group">
+            <label for="registerIgrejaCampo" id="labelIgrejaCampo">Nome da igreja</label>
+            <input id="registerIgrejaCampo" type="text" required placeholder="Ex: Igreja Batista Central">
+          </div>
           <button type="submit" class="btn primary" style="width: 100%; margin-bottom: 1rem;">Criar conta</button>
           <button type="button" id="showLogin" class="btn" style="width: 100%;">Voltar ao login</button>
         </form>
@@ -224,6 +389,19 @@ function showLoginForm() {
   document.getElementById('showLogin').addEventListener('click', () => {
     document.getElementById('registerForm').style.display = 'none';
     document.getElementById('showRegister').style.display = 'block';
+  });
+  document.querySelectorAll('input[name="modoIgreja"]').forEach((radio) => {
+    radio.addEventListener('change', (e) => {
+      const label = document.getElementById('labelIgrejaCampo');
+      const input = document.getElementById('registerIgrejaCampo');
+      if (e.target.value === 'criar') {
+        label.textContent = 'Nome da igreja';
+        input.placeholder = 'Ex: Igreja Batista Central';
+      } else {
+        label.textContent = 'Código de convite';
+        input.placeholder = 'Cole aqui o código recebido do admin da sua igreja';
+      }
+    });
   });
 }
 
@@ -252,6 +430,8 @@ async function handleRegister(e) {
   const name = document.getElementById('registerName').value;
   const email = document.getElementById('registerEmail').value;
   const password = document.getElementById('registerPassword').value;
+  const modoIgreja = document.querySelector('input[name="modoIgreja"]:checked').value;
+  const igrejaCampo = document.getElementById('registerIgrejaCampo').value;
   const messageEl = document.getElementById('authMessage');
   
   try {
@@ -260,7 +440,7 @@ async function handleRegister(e) {
     messageEl.style.color = '#fff';
     messageEl.textContent = 'Criando conta...';
     
-    await register(name, email, password);
+    await register(name, email, password, modoIgreja, igrejaCampo);
     
     messageEl.style.background = '#059669';
     messageEl.textContent = 'Conta criada! Agora faça login.';
@@ -790,7 +970,7 @@ function initCultos() {
     }
 
     const selecionadas = Array.from(select.selectedOptions).map((opt) =>
-      Number(opt.value)
+      opt.value
     );
 
     if (selecionadas.length === 0) {
@@ -1243,7 +1423,7 @@ function renderizarCalendario(escala) {
             <div class="musica-item">
               <span class="musica-titulo">${m.titulo}</span>
               ${m.tom ? `<span class="musica-tom">${m.tom}</span>` : ''}
-              ${podeExcluirMusica(m) ? `<button class="btn-excluir-musica" onclick="excluirMusicaEscala(${m.id})">🗑️</button>` : ''}
+              ${podeExcluirMusica(m) ? `<button class="btn-excluir-musica" onclick="excluirMusicaEscala('${m.id}')">🗑️</button>` : ''}
             </div>
           `).join('')}
           ${membrosNoDia.length > 0 ? `<button class="btn-adicionar-musica" onclick="abrirModalMusica('${dataStr}')">+ Música</button>` : ''}
@@ -1356,13 +1536,15 @@ async function carregarMembrosParaTroca() {
   try {
     const response = await apiCall("/auth/perfil");
     const users = response.data || response;
-    
-    // Aqui seria ideal ter um endpoint para listar usuários da mesma função
-    // Por enquanto, vou simular
+
     const select = document.getElementById("trocaReceptor");
-    if (select && currentUser?.funcao) {
+    if (select) {
       select.innerHTML = '<option value="">Selecione um membro</option>';
-      // Aqui você precisaria de um endpoint para buscar membros com a mesma função
+      users
+        .filter((u) => u.id !== currentUser?.id)
+        .forEach((u) => {
+          select.innerHTML += `<option value="${u.id}">${u.nome}${u.funcao ? " (" + u.funcao + ")" : ""}</option>`;
+        });
     }
   } catch (error) {
     console.error("Erro ao carregar membros:", error);
@@ -1397,7 +1579,7 @@ async function solicitarTroca(e) {
     await apiCall(`/escalas/${escalaId}/trocas`, {
       method: "POST",
       body: JSON.stringify({
-        receptorId: parseInt(receptorId),
+        receptorId: receptorId,
         data,
         funcao: currentUser.funcao,
         observacao
@@ -1461,8 +1643,8 @@ function renderizarTrocasPendentes(trocas) {
         ${troca.observacao ? `<p><strong>Observação:</strong> ${troca.observacao}</p>` : ''}
       </div>
       <div class="troca-actions">
-        <button class="btn success" onclick="aprovarTroca(${troca.id}, true)">✅ Aprovar</button>
-        <button class="btn danger" onclick="aprovarTroca(${troca.id}, false)">❌ Recusar</button>
+        <button class="btn success" onclick="aprovarTroca('${troca.id}', true)">✅ Aprovar</button>
+        <button class="btn danger" onclick="aprovarTroca('${troca.id}', false)">❌ Recusar</button>
       </div>
     </div>
   `).join('');
@@ -1474,8 +1656,8 @@ function renderizarAcoesTroca(troca) {
   
   if (troca.status === "pendente" && isReceptor) {
     return `
-      <button class="btn success" onclick="responderTroca(${troca.id}, true)">✅ Aceitar</button>
-      <button class="btn danger" onclick="responderTroca(${troca.id}, false)">❌ Recusar</button>
+      <button class="btn success" onclick="responderTroca('${troca.id}', true)">✅ Aceitar</button>
+      <button class="btn danger" onclick="responderTroca('${troca.id}', false)">❌ Recusar</button>
     `;
   }
   
@@ -1698,32 +1880,33 @@ function showNotification(message, type = 'info') {
 }
 
 // Função de inicialização principal
-function init() {
+async function init() {
   try {
     console.log("🚀 Iniciando aplicação Harmonia...");
-    
-    // Verificar token salvo
-    authToken = localStorage.getItem("harmonia_token");
-    const userStr = localStorage.getItem("harmonia_user");
-    currentUser = userStr ? JSON.parse(userStr) : null;
-    console.log("🔑 Token recuperado:", authToken ? "Presente" : "Ausente");
-    console.log("👤 Usuário atual:", currentUser);
-    
-    // Verificar se há dados de autenticação salvos
-    if (loadAuthData()) {
-      showMainApp();
-      // Se estiver logado, carregar dados iniciais
-      setTimeout(() => {
-        if (document.getElementById("escalaMes")) {
-          carregarEscala();
-        }
-      }, 100);
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session) {
+      try {
+        const user = await montarCurrentUser();
+        saveAuthData(session.access_token, user);
+        showMainApp();
+        setTimeout(() => {
+          if (document.getElementById("escalaMes")) {
+            carregarEscala();
+          }
+        }, 100);
+      } catch (e) {
+        console.error("Sessão presente mas sem perfil válido:", e);
+        clearAuthData();
+        showLoginForm();
+      }
     } else {
+      clearAuthData();
       showLoginForm();
     }
-    
+
     console.log("✅ Aplicação iniciada com sucesso!");
-    
   } catch (error) {
     console.error("❌ Erro na inicialização:", error);
     showNotification("Erro na inicialização do sistema", "error");
