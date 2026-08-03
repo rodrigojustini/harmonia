@@ -1230,6 +1230,8 @@ async function initEscala() {
   btnCarregarEscala.addEventListener("click", carregarEscala);
   btnCriarEscala?.addEventListener("click", criarEscala);
   btnAprovarEscala?.addEventListener("click", aprovarEscala);
+  document.getElementById("btnBaixarPdf")?.addEventListener("click", baixarEscalaPdf);
+  document.getElementById("btnCopiarZap")?.addEventListener("click", copiarEscalaZap);
 }
 
 async function carregarEscala() {
@@ -1324,6 +1326,7 @@ async function carregarPlanilha() {
     supabase.from("escala_colunas").select("*").eq("escala_id", escalaAtual.id).order("ordem"),
     supabase.from("escala_linhas").select("*").eq("escala_id", escalaAtual.id).order("ordem"),
     supabase.from("escala_celulas").select("*").eq("escala_id", escalaAtual.id),
+    loadMembros(),
   ]);
   if (colunasRes.error) throw colunasRes.error;
   if (linhasRes.error) throw linhasRes.error;
@@ -1354,6 +1357,9 @@ function renderizarPlanilha() {
     renderizarPlanilhaVazia();
     return;
   }
+
+  document.getElementById("btnBaixarPdf").style.display = "inline-block";
+  document.getElementById("btnCopiarZap").style.display = "inline-block";
 
   let html = `<div class="planilha-wrapper"><table class="planilha-escala"><thead><tr>
     <th>Dias</th><th>Datas</th>`;
@@ -1400,6 +1406,8 @@ function renderizarPlanilha() {
 
 function renderizarPlanilhaVazia() {
   const container = document.getElementById("escalaCalendario");
+  document.getElementById("btnBaixarPdf").style.display = "none";
+  document.getElementById("btnCopiarZap").style.display = "none";
   container.innerHTML = `
     <div class="card">
       <h3>Nenhuma escala encontrada</h3>
@@ -1474,32 +1482,145 @@ async function editarLinha(linhaId, campo, valor) {
   }
 }
 
+let celulaEmEdicao = null;
+
+function fecharModal(id) {
+  document.getElementById(id).style.display = "none";
+}
+
 async function editarCelula(linhaId, colunaId) {
   await loadMembros();
-  const nomesDisponiveis = membros.map((m) => m.nome).join(", ");
-  const atual = nomeDaCelula(celulaDe(linhaId, colunaId));
-  const nome = prompt(`Quem vai nessa função?\n\nMembros cadastrados: ${nomesDisponiveis || "(nenhum cadastrado ainda)"}\n\nDigite o nome (ou deixe em branco pra limpar):`, atual);
-  if (nome === null) return;
+  celulaEmEdicao = { linhaId, colunaId };
 
+  const coluna = escalaColunas.find((c) => c.id === colunaId);
+  document.getElementById("tituloEditarCelula").textContent = `Quem vai em "${coluna?.nome || ""}"?`;
+
+  const select = document.getElementById("celulaMembroSelect");
+  select.innerHTML = `<option value="">— Selecione —</option>` +
+    membros.map((m) => `<option value="${m.id}">${m.nome}</option>`).join("") +
+    `<option value="__outro__">Outro (digitar nome)</option>`;
+
+  const nomeLivreGroup = document.getElementById("celulaNomeLivreGroup");
+  const nomeLivreInput = document.getElementById("celulaNomeLivre");
+  nomeLivreGroup.style.display = "none";
+  nomeLivreInput.value = "";
+
+  const celulaAtual = celulaDe(linhaId, colunaId);
+  if (celulaAtual?.membro_id) {
+    select.value = celulaAtual.membro_id;
+  } else if (celulaAtual?.nome_livre) {
+    select.value = "__outro__";
+    nomeLivreGroup.style.display = "block";
+    nomeLivreInput.value = celulaAtual.nome_livre;
+  } else {
+    select.value = "";
+  }
+
+  document.getElementById("modalEditarCelula").style.display = "block";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const select = document.getElementById("celulaMembroSelect");
+  select?.addEventListener("change", () => {
+    document.getElementById("celulaNomeLivreGroup").style.display = select.value === "__outro__" ? "block" : "none";
+  });
+
+  document.getElementById("btnLimparCelula")?.addEventListener("click", async () => {
+    if (!celulaEmEdicao) return;
+    await salvarCelula(null, null);
+  });
+
+  document.getElementById("formEditarCelula")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!celulaEmEdicao) return;
+    const select = document.getElementById("celulaMembroSelect");
+    if (select.value === "__outro__") {
+      const nome = document.getElementById("celulaNomeLivre").value.trim();
+      if (!nome) { showNotification("Digite um nome.", "error"); return; }
+      await salvarCelula(null, nome);
+    } else if (select.value) {
+      await salvarCelula(select.value, null);
+    } else {
+      await salvarCelula(null, null);
+    }
+  });
+});
+
+async function salvarCelula(membroId, nomeLivre) {
+  const { linhaId, colunaId } = celulaEmEdicao;
   try {
-    if (!nome.trim()) {
+    if (!membroId && !nomeLivre) {
       const celula = celulaDe(linhaId, colunaId);
       if (celula) {
         const { error } = await supabase.from("escala_celulas").delete().eq("id", celula.id);
         if (error) throw error;
       }
     } else {
-      const membro = membros.find((m) => m.nome.toLowerCase() === nome.trim().toLowerCase());
       const payload = {
         igreja_id: currentUser.igreja.id, escala_id: escalaAtual.id, linha_id: linhaId, coluna_id: colunaId,
-        membro_id: membro ? membro.id : null, nome_livre: membro ? null : nome.trim(),
+        membro_id: membroId, nome_livre: nomeLivre,
       };
       const { error } = await supabase.from("escala_celulas").upsert(payload, { onConflict: "linha_id,coluna_id" });
       if (error) throw error;
     }
+    fecharModal("modalEditarCelula");
     await carregarPlanilha();
   } catch (error) {
     showNotification("Erro ao salvar escalação: " + error.message, "error");
+  }
+}
+
+function baixarEscalaPdf() {
+  if (!escalaAtual) return;
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    const titulo = `ESCALA EQUIPE DE MÚSICA ${(currentUser.igreja?.nome || "").toUpperCase()} — ${getMonthName(escalaAtual.mes).toUpperCase()}/${String(escalaAtual.ano).slice(-2)}`;
+    doc.setFontSize(14);
+    doc.text(titulo, doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+
+    const head = [["Dias", "Datas", ...escalaColunas.map((c) => c.nome)]];
+    const body = escalaLinhas.map((linha) => [
+      linha.dias,
+      linha.datas,
+      ...escalaColunas.map((col) => nomeDaCelula(celulaDe(linha.id, col.id)) || "****"),
+    ]);
+
+    doc.autoTable({
+      head, body, startY: 22,
+      headStyles: { fillColor: [46, 204, 113], textColor: 255, fontStyle: "bold", halign: "center" },
+      bodyStyles: { halign: "center", fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [255, 249, 219] },
+      styles: { fontSize: 9, cellPadding: 3 },
+    });
+
+    doc.save(`escala-${getMonthName(escalaAtual.mes).toLowerCase()}-${escalaAtual.ano}.pdf`);
+  } catch (error) {
+    console.error(error);
+    showNotification("Erro ao gerar PDF: " + error.message, "error");
+  }
+}
+
+async function copiarEscalaZap() {
+  if (!escalaAtual) return;
+  try {
+    let texto = `*ESCALA EQUIPE DE MÚSICA ${(currentUser.igreja?.nome || "").toUpperCase()}*\n`;
+    texto += `_${getMonthName(escalaAtual.mes)}/${escalaAtual.ano}_\n\n`;
+
+    escalaLinhas.forEach((linha) => {
+      texto += `📅 *${linha.dias} (${linha.datas})*\n`;
+      escalaColunas.forEach((col) => {
+        const nome = nomeDaCelula(celulaDe(linha.id, col.id));
+        if (nome) texto += `   ${col.nome}: ${nome}\n`;
+      });
+      texto += `\n`;
+    });
+
+    await navigator.clipboard.writeText(texto);
+    showNotification("Escala copiada! Agora é só colar no WhatsApp.", "success");
+  } catch (error) {
+    showNotification("Erro ao copiar: " + error.message, "error");
   }
 }
 

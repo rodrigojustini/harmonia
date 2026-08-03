@@ -62,7 +62,8 @@
             <button class="btn secondary" id="btnCarregarEscala">📅 Carregar Escala</button>
             <button class="btn primary" id="btnCriarEscala" style="display:none;">➕ Criar Nova Escala</button>
             <button class="btn success" id="btnAprovarEscala" style="display:none;">✅ Aprovar Escala</button>
-            <button class="btn warning" id="btnDebugEscala">🔧 Debug Escala</button>
+            <button class="btn warning" id="btnBaixarPdf" style="display:none;">📄 Baixar PDF</button>
+            <button class="btn success" id="btnCopiarZap" style="display:none;">📋 Copiar pro Zap</button>
           </div>
         </div>
       </div>
@@ -72,27 +73,26 @@
       </div>
 
       <!-- Modal para adicionar música -->
-      <div id="modalAdicionarMusica" class="modal" style="display:none;">
+      <div id="modalEditarCelula" class="modal" style="display:none;">
         <div class="modal-content">
-          <span class="close">&times;</span>
-          <h3>Adicionar Música ao Dia</h3>
-          <form id="formAdicionarMusica">
-            <input type="hidden" id="musicaData" />
+          <span class="close" onclick="fecharModal('modalEditarCelula')">&times;</span>
+          <h3 id="tituloEditarCelula">Quem vai nessa função?</h3>
+          <form id="formEditarCelula">
             <div class="field-group">
-              <label for="musicaTitulo">Título da Música</label>
-              <input id="musicaTituloModal" type="text" required />
+              <label for="celulaMembroSelect">Membro cadastrado</label>
+              <select id="celulaMembroSelect">
+                <option value="">— Selecione —</option>
+                <option value="__outro__">Outro (digitar nome)</option>
+              </select>
             </div>
-            <div class="field-group">
-              <label for="musicaTomModal">Tom</label>
-              <input id="musicaTomModal" type="text" placeholder="Ex: G, C, D..." />
-            </div>
-            <div class="field-group">
-              <label for="musicaLinkModal">Link (YouTube, CifraClub, etc.)</label>
-              <input id="musicaLinkModal" type="url" placeholder="https://..." />
+            <div class="field-group" id="celulaNomeLivreGroup" style="display:none;">
+              <label for="celulaNomeLivre">Nome</label>
+              <input id="celulaNomeLivre" type="text" placeholder="Nome do convidado/substituto">
             </div>
             <div class="modal-actions">
-              <button type="button" class="btn secondary" onclick="fecharModal('modalAdicionarMusica')">Cancelar</button>
-              <button type="submit" class="btn primary">Adicionar</button>
+              <button type="button" class="btn danger" id="btnLimparCelula">Limpar</button>
+              <button type="button" class="btn secondary" onclick="fecharModal('modalEditarCelula')">Cancelar</button>
+              <button type="submit" class="btn primary">Salvar</button>
             </div>
           </form>
         </div>
@@ -391,8 +391,10 @@
     <span>Harmonia • Ministério de Louvor</span>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/supabase-config.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>
