@@ -659,3 +659,82 @@ textarea {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   color: #bbbbbb;
 }
+
+/* ====== Planilha de Escala ====== */
+.planilha-wrapper {
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.planilha-escala {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 640px;
+}
+
+.planilha-escala thead th {
+  background: var(--verde-escuro);
+  color: var(--branco);
+  padding: 0.6rem 0.5rem;
+  text-align: center;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.planilha-escala tbody td {
+  padding: 0.5rem;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--cinza-escuro);
+  color: var(--branco);
+}
+
+.planilha-escala tbody tr:nth-child(odd) td {
+  background: #141414;
+}
+
+.planilha-escala tbody tr.linha-destaque td {
+  background: rgba(46, 204, 113, 0.08);
+}
+
+.celula-escala {
+  cursor: pointer;
+  transition: background 0.15s ease;
+  min-width: 90px;
+}
+
+.celula-escala:hover {
+  background: rgba(46, 204, 113, 0.15) !important;
+}
+
+.input-inline {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+  color: var(--branco);
+  text-align: center;
+  font-weight: 600;
+  padding: 0.15rem;
+}
+
+.input-inline:focus {
+  outline: none;
+  border-bottom-color: var(--verde);
+}
+
+.btn-icone-remover {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0 0.25rem;
+}
+
+.btn-icone-remover:hover {
+  color: #ff6b5b;
+}

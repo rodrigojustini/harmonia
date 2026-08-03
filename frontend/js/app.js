@@ -1208,345 +1208,298 @@ function initMainApp() {
   initConfig();
 }
 
-// ====== SISTEMA DE ESCALA ======
+// ====== SISTEMA DE ESCALA (formato planilha) ======
 let escalaAtual = null;
-let escalaSelecionada = null;
+let escalaColunas = [];
+let escalaLinhas = [];
+let escalaCelulas = [];
 
 async function initEscala() {
-  console.log("🔧 Inicializando sistema de escala...");
-  
   const btnCarregarEscala = document.getElementById("btnCarregarEscala");
   const btnCriarEscala = document.getElementById("btnCriarEscala");
   const btnAprovarEscala = document.getElementById("btnAprovarEscala");
-  const formAdicionarMusica = document.getElementById("formAdicionarMusica");
   const escalaMes = document.getElementById("escalaMes");
   const escalaAno = document.getElementById("escalaAno");
 
-  if (!btnCarregarEscala) {
-    console.error("❌ Elemento 'btnCarregarEscala' não encontrado!");
-    return;
-  }
+  if (!btnCarregarEscala) return;
 
-  // Definir mês/ano atual
   const agora = new Date();
   if (escalaMes) escalaMes.value = agora.getMonth() + 1;
   if (escalaAno) escalaAno.value = agora.getFullYear();
-  
-  console.log("✅ Elementos encontrados, configurando eventos...");
 
-  btnCarregarEscala?.addEventListener("click", carregarEscala);
+  btnCarregarEscala.addEventListener("click", carregarEscala);
   btnCriarEscala?.addEventListener("click", criarEscala);
   btnAprovarEscala?.addEventListener("click", aprovarEscala);
-  formAdicionarMusica?.addEventListener("submit", adicionarMusicaEscala);
-  
-  // Debug button
-  document.getElementById("btnDebugEscala")?.addEventListener("click", debugEscala);
-
-  // Fechar modal ao clicar no X
-  document.querySelector("#modalAdicionarMusica .close")?.addEventListener("click", () => {
-    fecharModal("modalAdicionarMusica");
-  });
-
-  // NÃO carregar automaticamente - esperar usuário clicar
-  console.log("✅ Sistema de escala inicializado");
 }
 
 async function carregarEscala() {
   try {
-    console.log("🔍 Carregando escala...");
-    console.log("🔑 Auth Token no início:", authToken);
-    console.log("👤 Current User:", currentUser);
-    
-    // Mostrar feedback visual
+    const mes = document.getElementById("escalaMes").value;
+    const ano = document.getElementById("escalaAno").value;
+
     showNotification("Carregando escala...", "info");
-    
-    // Verificar se está logado
-    if (!authToken) {
-      console.error("❌ Usuário não está logado!");
-      alert("❌ Você precisa fazer login primeiro!");
-      showNotification("Faça login para acessar a escala", "error");
-      return;
-    }
-    
-    const mesEl = document.getElementById("escalaMes");
-    const anoEl = document.getElementById("escalaAno");
-    
-    if (!mesEl || !anoEl) {
-      console.error("❌ Elementos de mês/ano não encontrados!");
-      showNotification("Erro: elementos não encontrados", "error");
-      return;
-    }
-    
-    const mes = mesEl.value;
-    const ano = anoEl.value;
-    
-    console.log(`📅 Buscando escala para ${mes}/${ano}`);
-    console.log("🔑 Token:", authToken ? "Presente" : "Ausente");
-    
-    const response = await apiCall(`/escalas?mes=${mes}&ano=${ano}`);
-    console.log("📊 Resposta da API:", response);
-    const escalas = Array.isArray(response) ? response : (response.data || []);
+
+    const { data: escalas, error } = await supabase.from("escalas").select("*")
+      .eq("mes", Number(mes)).eq("ano", Number(ano));
+    if (error) throw error;
 
     if (escalas.length > 0) {
       escalaAtual = escalas[0];
-      escalaSelecionada = escalaAtual;
-      renderizarCalendario(escalaAtual);
+      await carregarPlanilha();
       mostrarBotaoAprovar();
-      showNotification(`✅ Escala carregada: ${escalas[0].mes}/${escalas[0].ano}`, "success");
+      showNotification(`✅ Escala carregada: ${getMonthName(mes)}/${ano}`, "success");
     } else {
-      // Escala não existe, perguntar se quer criar
-      const mesEl = document.getElementById("escalaMes");
-      const anoEl = document.getElementById("escalaAno");
-      const mes = mesEl.value;
-      const ano = anoEl.value;
-      
-      const confirmar = confirm(`📅 Nenhuma escala encontrada para ${mes}/${ano}.\n\n✨ Deseja criar uma nova escala?`);
-      
+      const confirmar = confirm(`📅 Nenhuma escala encontrada para ${getMonthName(mes)}/${ano}.\n\n✨ Deseja criar uma nova escala?`);
       if (confirmar && currentUser?.role === "leader") {
-        // Criar escala automaticamente
         await criarEscala();
-      } else if (confirmar && currentUser?.role !== "leader") {
+      } else if (confirmar) {
         alert("❌ Apenas líderes podem criar escalas.");
-        showNotification("Apenas líderes podem criar escalas", "error");
       } else {
         escalaAtual = null;
-        renderizarCalendarioVazio();
+        renderizarPlanilhaVazia();
         mostrarBotaoCriar();
-        showNotification("Nenhuma escala encontrada para este mês/ano", "info");
       }
     }
   } catch (error) {
-    console.error("❌ ERRO COMPLETO ao carregar escala:", error);
-    alert(`❌ ERRO: ${error.message}`);
+    console.error("Erro ao carregar escala:", error);
     showNotification("Erro ao carregar escala: " + error.message, "error");
   }
 }
 
 async function criarEscala() {
   try {
-    console.log("🔄 Criando escala...");
-    
-    if (!authToken) {
-      showNotification("Faça login para criar uma escala", "error");
-      return;
-    }
-    
-    const mesEl = document.getElementById("escalaMes");
-    const anoEl = document.getElementById("escalaAno");
-    
-    if (!mesEl || !anoEl) {
-      console.error("❌ Elementos de mês/ano não encontrados!");
-      showNotification("Erro: elementos não encontrados", "error");
-      return;
-    }
-    
-    const mes = parseInt(mesEl.value);
-    const ano = parseInt(anoEl.value);
-    
-    console.log(`📅 Criando escala para ${mes}/${ano}`);
-    
-    const response = await apiCall("/escalas", {
-      method: "POST",
-      body: JSON.stringify({ mes, ano })
-    });
+    const mes = Number(document.getElementById("escalaMes").value);
+    const ano = Number(document.getElementById("escalaAno").value);
 
-    // A resposta já vem como o objeto escala diretamente
-    escalaAtual = response;
-    escalaSelecionada = escalaAtual;
-    
-    console.log("✅ Escala criada:", escalaAtual);
-    
-    renderizarCalendario(escalaAtual);
+    const { data: escala, error } = await supabase.from("escalas").insert({
+      igreja_id: currentUser.igreja.id, mes, ano, criado_por: currentUser.id,
+    }).select().single();
+    if (error) throw error;
+
+    escalaAtual = escala;
+    escalaColunas = [];
+    escalaLinhas = [];
+    escalaCelulas = [];
+    renderizarPlanilha();
     mostrarBotaoAprovar();
-    showNotification("Escala criada com sucesso!", "success");
-    
+    showNotification("Escala criada! Agora adicione as colunas (funções/instrumentos) e as linhas (datas).", "success");
   } catch (error) {
-    console.error("❌ Erro ao criar escala:", error);
-    showNotification("Erro ao criar escala: " + (error.message || "Erro desconhecido"), "error");
+    console.error("Erro ao criar escala:", error);
+    showNotification("Erro ao criar escala: " + error.message, "error");
   }
 }
 
 async function aprovarEscala() {
   if (!escalaAtual) return;
-
   try {
-    await apiCall(`/escalas/${escalaAtual.id}/aprovar`, { method: "PUT" });
+    const { error } = await supabase.from("escalas").update({ aprovada: true }).eq("id", escalaAtual.id);
+    if (error) throw error;
     escalaAtual.aprovada = true;
-    renderizarCalendario(escalaAtual);
+    renderizarPlanilha();
     showNotification("Escala aprovada com sucesso!", "success");
   } catch (error) {
-    console.error("Erro ao aprovar escala:", error);
-    showNotification("Erro ao aprovar escala: " + (error.message || "Erro desconhecido"), "error");
+    showNotification("Erro ao aprovar escala: " + error.message, "error");
   }
 }
 
 function mostrarBotaoCriar() {
-  console.log("👑 Usuário atual:", currentUser);
-  console.log("🔧 Mostrando botão criar escala");
-  
   const btnCriar = document.getElementById("btnCriarEscala");
   const btnAprovar = document.getElementById("btnAprovarEscala");
-  
-  if (btnCriar) {
-    btnCriar.style.display = currentUser?.role === "leader" ? "inline-block" : "none";
-    console.log("➕ Botão criar:", btnCriar.style.display);
-  }
-  
-  if (btnAprovar) {
-    btnAprovar.style.display = "none";
-  }
+  if (btnCriar) btnCriar.style.display = currentUser?.role === "leader" ? "inline-block" : "none";
+  if (btnAprovar) btnAprovar.style.display = "none";
 }
 
 function mostrarBotaoAprovar() {
   document.getElementById("btnCriarEscala").style.display = "none";
+  const btnAprovar = document.getElementById("btnAprovarEscala");
   if (currentUser?.role === "leader" && escalaAtual && !escalaAtual.aprovada) {
-    document.getElementById("btnAprovarEscala").style.display = "inline-block";
+    btnAprovar.style.display = "inline-block";
   } else {
-    document.getElementById("btnAprovarEscala").style.display = "none";
+    btnAprovar.style.display = "none";
   }
 }
 
-function renderizarCalendario(escala) {
-  const container = document.getElementById("escalaCalendario");
-  const mes = escala.mes;
-  const ano = escala.ano;
-  
-  // Criar grid do calendário
-  const primeiroDia = new Date(ano, mes - 1, 1);
-  const ultimoDia = new Date(ano, mes, 0);
-  const diasDoMes = ultimoDia.getDate();
-  const diaDaSemana = primeiroDia.getDay();
-  
-  let html = `
-    <div class="calendario-grid">
-      <div class="calendario-header">Dom</div>
-      <div class="calendario-header">Seg</div>
-      <div class="calendario-header">Ter</div>
-      <div class="calendario-header">Qua</div>
-      <div class="calendario-header">Qui</div>
-      <div class="calendario-header">Sex</div>
-      <div class="calendario-header">Sáb</div>
-  `;
+async function carregarPlanilha() {
+  const [colunasRes, linhasRes, celulasRes] = await Promise.all([
+    supabase.from("escala_colunas").select("*").eq("escala_id", escalaAtual.id).order("ordem"),
+    supabase.from("escala_linhas").select("*").eq("escala_id", escalaAtual.id).order("ordem"),
+    supabase.from("escala_celulas").select("*").eq("escala_id", escalaAtual.id),
+  ]);
+  if (colunasRes.error) throw colunasRes.error;
+  if (linhasRes.error) throw linhasRes.error;
+  if (celulasRes.error) throw celulasRes.error;
 
-  // Dias do mês anterior (para preencher a primeira semana)
-  const diasMesAnterior = new Date(ano, mes - 1, 0).getDate();
-  for (let i = diaDaSemana - 1; i >= 0; i--) {
-    html += `<div class="calendario-dia outro-mes">
-      <div class="dia-numero">${diasMesAnterior - i}</div>
+  escalaColunas = colunasRes.data;
+  escalaLinhas = linhasRes.data;
+  escalaCelulas = celulasRes.data;
+  renderizarPlanilha();
+}
+
+function celulaDe(linhaId, colunaId) {
+  return escalaCelulas.find((c) => c.linha_id === linhaId && c.coluna_id === colunaId);
+}
+
+function nomeDaCelula(celula) {
+  if (!celula) return "";
+  if (celula.nome_livre) return celula.nome_livre;
+  const membro = membros.find((m) => m.id === celula.membro_id);
+  return membro ? membro.nome : "";
+}
+
+function renderizarPlanilha() {
+  const container = document.getElementById("escalaCalendario");
+  const souLider = currentUser?.role === "leader";
+
+  if (!escalaAtual) {
+    renderizarPlanilhaVazia();
+    return;
+  }
+
+  let html = `<div class="planilha-wrapper"><table class="planilha-escala"><thead><tr>
+    <th>Dias</th><th>Datas</th>`;
+
+  escalaColunas.forEach((col) => {
+    html += `<th>${col.nome}${souLider ? ` <button class="btn-icone-remover" onclick="removerColuna('${col.id}')" title="Remover coluna">✕</button>` : ""}</th>`;
+  });
+  if (souLider) html += `<th><button class="btn small secondary" onclick="adicionarColuna()">+ Coluna</button></th>`;
+  html += `</tr></thead><tbody>`;
+
+  if (escalaLinhas.length === 0) {
+    html += `<tr><td colspan="${escalaColunas.length + 2 + (souLider ? 1 : 0)}" style="text-align:center; color:#888; padding:1.5rem;">
+      Nenhuma linha ainda.${souLider ? " Clique em \"+ Linha\" abaixo pra adicionar as datas do mês." : ""}
+    </td></tr>`;
+  }
+
+  escalaLinhas.forEach((linha) => {
+    html += `<tr class="${linha.destaque ? "linha-destaque" : ""}">
+      <td>${souLider ? `<input type="text" value="${linha.dias}" onchange="editarLinha('${linha.id}', 'dias', this.value)" class="input-inline">` : linha.dias}</td>
+      <td>${souLider ? `<input type="text" value="${linha.datas}" onchange="editarLinha('${linha.id}', 'datas', this.value)" class="input-inline">` : linha.datas}</td>`;
+
+    escalaColunas.forEach((col) => {
+      const celula = celulaDe(linha.id, col.id);
+      const nome = nomeDaCelula(celula);
+      html += `<td class="celula-escala" ${souLider ? `onclick="editarCelula('${linha.id}', '${col.id}')"` : ""}>${nome || (souLider ? '<span style="color:#555;">+ definir</span>' : "—")}</td>`;
+    });
+
+    if (souLider) {
+      html += `<td><button class="btn-icone-remover" onclick="removerLinha('${linha.id}')" title="Remover linha">✕</button></td>`;
+    }
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+
+  if (souLider) {
+    html += `<div style="margin-top:1rem; display:flex; gap:0.5rem;">
+      <button class="btn secondary" onclick="adicionarLinha()">+ Linha (par de dias)</button>
     </div>`;
   }
 
-  // Dias do mês atual
-  for (let dia = 1; dia <= diasDoMes; dia++) {
-    const data = new Date(ano, mes - 1, dia);
-    const dataStr = data.toISOString().split('T')[0];
-    
-    // Filtrar membros e músicas para este dia
-    const membrosNoDia = escala.membros?.filter(m => 
-      new Date(m.data).toDateString() === data.toDateString()
-    ) || [];
-    
-    const musicasNoDia = escala.musicas?.filter(m => 
-      new Date(m.data).toDateString() === data.toDateString()
-    ) || [];
-
-    const classeStatus = escala.aprovada ? 'aprovada' : 'pendente';
-    
-    html += `
-      <div class="calendario-dia ${classeStatus}" data-data="${dataStr}">
-        <div class="dia-numero">${dia}</div>
-        <div class="dia-membros">
-          ${membrosNoDia.map(m => `
-            <div class="membro-item">
-              <span>${m.user?.name || 'Usuário'}</span>
-              <span class="membro-funcao">${m.funcao}</span>
-            </div>
-          `).join('')}
-        </div>
-        <div class="dia-musicas">
-          ${musicasNoDia.map(m => `
-            <div class="musica-item">
-              <span class="musica-titulo">${m.titulo}</span>
-              ${m.tom ? `<span class="musica-tom">${m.tom}</span>` : ''}
-              ${podeExcluirMusica(m) ? `<button class="btn-excluir-musica" onclick="excluirMusicaEscala('${m.id}')">🗑️</button>` : ''}
-            </div>
-          `).join('')}
-          ${membrosNoDia.length > 0 ? `<button class="btn-adicionar-musica" onclick="abrirModalMusica('${dataStr}')">+ Música</button>` : ''}
-        </div>
-      </div>
-    `;
-  }
-
-  html += `</div>`;
   container.innerHTML = html;
 }
 
-function renderizarCalendarioVazio() {
+function renderizarPlanilhaVazia() {
   const container = document.getElementById("escalaCalendario");
   container.innerHTML = `
     <div class="card">
       <h3>Nenhuma escala encontrada</h3>
       <p>Não há escala criada para este mês/ano.</p>
-      ${currentUser?.role === "leader" ? `<p><strong>Como líder, você pode criar uma nova escala.</strong></p>` : ''}
+      ${currentUser?.role === "leader" ? `<p><strong>Como líder, você pode criar uma nova escala.</strong></p>` : ""}
     </div>
   `;
 }
 
-function podeExcluirMusica(musica) {
-  if (currentUser?.role === "leader") return true;
-  if (currentUser?.id === musica.adicionadoPor && !escalaAtual?.aprovada) return true;
-  return false;
-}
-
-function abrirModalMusica(data) {
-  document.getElementById("musicaData").value = data;
-  document.getElementById("modalAdicionarMusica").style.display = "block";
-}
-
-function fecharModal(modalId) {
-  document.getElementById(modalId).style.display = "none";
-}
-
-async function adicionarMusicaEscala(e) {
-  e.preventDefault();
-  
-  if (!escalaAtual) return;
-
+async function adicionarColuna() {
+  const nome = prompt("Nome da função/instrumento (ex: Backing, Teclado, Sopro):");
+  if (!nome || !nome.trim()) return;
   try {
-    const data = document.getElementById("musicaData").value;
-    const titulo = document.getElementById("musicaTituloModal").value;
-    const tom = document.getElementById("musicaTomModal").value;
-    const link = document.getElementById("musicaLinkModal").value;
-
-    await apiCall(`/escalas/${escalaAtual.id}/musicas`, {
-      method: "POST",
-      body: JSON.stringify({ data, titulo, tom, link })
+    const ordem = escalaColunas.length;
+    const { error } = await supabase.from("escala_colunas").insert({
+      igreja_id: currentUser.igreja.id, escala_id: escalaAtual.id, nome: nome.trim(), ordem,
     });
-
-    // Recarregar escala
-    await carregarEscala();
-    fecharModal("modalAdicionarMusica");
-    e.target.reset();
-    showNotification("Música adicionada com sucesso!", "success");
+    if (error) throw error;
+    await carregarPlanilha();
   } catch (error) {
-    console.error("Erro ao adicionar música:", error);
-    showNotification("Erro ao adicionar música: " + (error.message || "Erro desconhecido"), "error");
+    showNotification("Erro ao adicionar coluna: " + error.message, "error");
   }
 }
 
-async function excluirMusicaEscala(musicaId) {
-  if (!confirm("Tem certeza que deseja excluir esta música?")) return;
+async function removerColuna(colunaId) {
+  if (!confirm("Remover esta coluna? As pessoas escaladas nela também serão removidas.")) return;
+  try {
+    const { error } = await supabase.from("escala_colunas").delete().eq("id", colunaId);
+    if (error) throw error;
+    await carregarPlanilha();
+  } catch (error) {
+    showNotification("Erro ao remover coluna: " + error.message, "error");
+  }
+}
+
+async function adicionarLinha() {
+  const dias = prompt("Dias da semana (ex: DOMINGO/TERÇA):");
+  if (!dias || !dias.trim()) return;
+  const datas = prompt("Datas (ex: 2 e 4):");
+  if (datas === null) return;
+  try {
+    const ordem = escalaLinhas.length;
+    const { error } = await supabase.from("escala_linhas").insert({
+      igreja_id: currentUser.igreja.id, escala_id: escalaAtual.id, dias: dias.trim(), datas: (datas || "").trim(), ordem,
+    });
+    if (error) throw error;
+    await carregarPlanilha();
+  } catch (error) {
+    showNotification("Erro ao adicionar linha: " + error.message, "error");
+  }
+}
+
+async function removerLinha(linhaId) {
+  if (!confirm("Remover esta linha da escala?")) return;
+  try {
+    const { error } = await supabase.from("escala_linhas").delete().eq("id", linhaId);
+    if (error) throw error;
+    await carregarPlanilha();
+  } catch (error) {
+    showNotification("Erro ao remover linha: " + error.message, "error");
+  }
+}
+
+async function editarLinha(linhaId, campo, valor) {
+  try {
+    const { error } = await supabase.from("escala_linhas").update({ [campo]: valor }).eq("id", linhaId);
+    if (error) throw error;
+    const linha = escalaLinhas.find((l) => l.id === linhaId);
+    if (linha) linha[campo] = valor;
+  } catch (error) {
+    showNotification("Erro ao salvar: " + error.message, "error");
+  }
+}
+
+async function editarCelula(linhaId, colunaId) {
+  await loadMembros();
+  const nomesDisponiveis = membros.map((m) => m.nome).join(", ");
+  const atual = nomeDaCelula(celulaDe(linhaId, colunaId));
+  const nome = prompt(`Quem vai nessa função?\n\nMembros cadastrados: ${nomesDisponiveis || "(nenhum cadastrado ainda)"}\n\nDigite o nome (ou deixe em branco pra limpar):`, atual);
+  if (nome === null) return;
 
   try {
-    await apiCall(`/escalas/${escalaAtual.id}/musicas/${musicaId}`, {
-      method: "DELETE"
-    });
-
-    await carregarEscala();
-    showNotification("Música excluída com sucesso!", "success");
+    if (!nome.trim()) {
+      const celula = celulaDe(linhaId, colunaId);
+      if (celula) {
+        const { error } = await supabase.from("escala_celulas").delete().eq("id", celula.id);
+        if (error) throw error;
+      }
+    } else {
+      const membro = membros.find((m) => m.nome.toLowerCase() === nome.trim().toLowerCase());
+      const payload = {
+        igreja_id: currentUser.igreja.id, escala_id: escalaAtual.id, linha_id: linhaId, coluna_id: colunaId,
+        membro_id: membro ? membro.id : null, nome_livre: membro ? null : nome.trim(),
+      };
+      const { error } = await supabase.from("escala_celulas").upsert(payload, { onConflict: "linha_id,coluna_id" });
+      if (error) throw error;
+    }
+    await carregarPlanilha();
   } catch (error) {
-    console.error("Erro ao excluir música:", error);
-    showNotification("Erro ao excluir música: " + (error.message || "Erro desconhecido"), "error");
+    showNotification("Erro ao salvar escalação: " + error.message, "error");
   }
 }
 
