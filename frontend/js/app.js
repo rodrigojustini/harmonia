@@ -1230,6 +1230,8 @@ async function initEscala() {
   btnCarregarEscala.addEventListener("click", carregarEscala);
   btnCriarEscala?.addEventListener("click", criarEscala);
   btnAprovarEscala?.addEventListener("click", aprovarEscala);
+  document.getElementById("btnBaixarPdf")?.addEventListener("click", baixarEscalaPdf);
+  document.getElementById("btnCopiarZap")?.addEventListener("click", copiarEscalaZap);
 }
 
 async function carregarEscala() {
@@ -1355,6 +1357,9 @@ function renderizarPlanilha() {
     return;
   }
 
+  document.getElementById("btnBaixarPdf").style.display = "inline-block";
+  document.getElementById("btnCopiarZap").style.display = "inline-block";
+
   let html = `<div class="planilha-wrapper"><table class="planilha-escala"><thead><tr>
     <th>Dias</th><th>Datas</th>`;
 
@@ -1400,6 +1405,8 @@ function renderizarPlanilha() {
 
 function renderizarPlanilhaVazia() {
   const container = document.getElementById("escalaCalendario");
+  document.getElementById("btnBaixarPdf").style.display = "none";
+  document.getElementById("btnCopiarZap").style.display = "none";
   container.innerHTML = `
     <div class="card">
       <h3>Nenhuma escala encontrada</h3>
@@ -1500,6 +1507,60 @@ async function editarCelula(linhaId, colunaId) {
     await carregarPlanilha();
   } catch (error) {
     showNotification("Erro ao salvar escalação: " + error.message, "error");
+  }
+}
+
+function baixarEscalaPdf() {
+  if (!escalaAtual) return;
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    const titulo = `ESCALA EQUIPE DE MÚSICA ${(currentUser.igreja?.nome || "").toUpperCase()} — ${getMonthName(escalaAtual.mes).toUpperCase()}/${String(escalaAtual.ano).slice(-2)}`;
+    doc.setFontSize(14);
+    doc.text(titulo, doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+
+    const head = [["Dias", "Datas", ...escalaColunas.map((c) => c.nome)]];
+    const body = escalaLinhas.map((linha) => [
+      linha.dias,
+      linha.datas,
+      ...escalaColunas.map((col) => nomeDaCelula(celulaDe(linha.id, col.id)) || "****"),
+    ]);
+
+    doc.autoTable({
+      head, body, startY: 22,
+      headStyles: { fillColor: [46, 204, 113], textColor: 255, fontStyle: "bold", halign: "center" },
+      bodyStyles: { halign: "center", fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [255, 249, 219] },
+      styles: { fontSize: 9, cellPadding: 3 },
+    });
+
+    doc.save(`escala-${getMonthName(escalaAtual.mes).toLowerCase()}-${escalaAtual.ano}.pdf`);
+  } catch (error) {
+    console.error(error);
+    showNotification("Erro ao gerar PDF: " + error.message, "error");
+  }
+}
+
+async function copiarEscalaZap() {
+  if (!escalaAtual) return;
+  try {
+    let texto = `*ESCALA EQUIPE DE MÚSICA ${(currentUser.igreja?.nome || "").toUpperCase()}*\n`;
+    texto += `_${getMonthName(escalaAtual.mes)}/${escalaAtual.ano}_\n\n`;
+
+    escalaLinhas.forEach((linha) => {
+      texto += `📅 *${linha.dias} (${linha.datas})*\n`;
+      escalaColunas.forEach((col) => {
+        const nome = nomeDaCelula(celulaDe(linha.id, col.id));
+        if (nome) texto += `   ${col.nome}: ${nome}\n`;
+      });
+      texto += `\n`;
+    });
+
+    await navigator.clipboard.writeText(texto);
+    showNotification("Escala copiada! Agora é só colar no WhatsApp.", "success");
+  } catch (error) {
+    showNotification("Erro ao copiar: " + error.message, "error");
   }
 }
 
