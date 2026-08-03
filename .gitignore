@@ -94,3 +94,4 @@ Thumbs.db
 
 # Backups
 *.backup
+backend/
