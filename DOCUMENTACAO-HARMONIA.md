@@ -288,6 +288,25 @@ da grade de escala (antes da migração pra formato planilha). Pode ser removido
 
 ---
 
+## 13. Sessão 04/08/2026 (tarde) — Cabeçalho: usuário virou mini-card, abas ganharam espaço
+
+Achado real (não só estético): o JS forçava `header.style.display = 'flex'`, o que colocava
+logo, abas e informação do usuário **todos numa única linha horizontal**, disputando espaço —
+por isso o nome/igreja/papel ficava espremido colado nas abas em telas menores.
+
+**Correção:**
+- Header voltou a ser um bloco empilhado: linha 1 = logo + nome do app + mini-card do usuário
+  (alinhado à direita), linha 2 = abas (com todo o espaço horizontal só pra elas)
+- Informação do usuário virou um chip/mini-card flutuante de verdade (fundo sutil, borda,
+  cantos arredondados) com o papel (Admin/Líder/Membro) em um selo dourado separado, em vez de
+  texto corrido com parênteses
+- Em telas estreitas (≤640px) o mini-card quebra pra largura total, embaixo do logo, em vez de
+  espremer
+
+`style.css?v=4`, `app.js?v=13`.
+
+---
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase

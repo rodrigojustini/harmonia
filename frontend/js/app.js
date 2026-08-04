@@ -482,38 +482,35 @@ async function handleRegister(e) {
 
 function showMainApp() {
   const header = document.querySelector('.app-header');
-  header.style.display = 'flex';
-  
+  header.style.display = 'block';
+
   console.log("🚀 Mostrando app principal...");
   console.log("🔑 Token atual:", authToken ? "Presente" : "Ausente");
   console.log("👤 Usuário atual:", currentUser);
-  
-  // Adicionar informações do usuário
+
+  // Adicionar informações do usuário (mini-card à direita da marca, não espremido com as abas)
   const existingUserInfo = header.querySelector('.user-info');
   if (!existingUserInfo) {
+    const brand = header.querySelector('.brand');
+
     const userInfo = document.createElement('div');
     userInfo.className = 'user-info';
-    userInfo.style.marginLeft = 'auto';
-    userInfo.style.display = 'flex';
-    userInfo.style.alignItems = 'center';
-    userInfo.style.gap = '1rem';
-    
+
     const userSpan = document.createElement('span');
-    const igrejaInfo = currentUser?.igreja ? ` | ${currentUser.igreja.nome}` : '';
-    const rotuloPapel = currentUser?.role === 'admin' ? '(Admin)' : currentUser?.role === 'lider' ? '(Líder)' : '(Membro)';
-    userSpan.textContent = `${currentUser?.name || 'Usuário'}${igrejaInfo} ${rotuloPapel}`;
-    userSpan.style.fontSize = '0.9rem';
-    
+    const igrejaInfo = currentUser?.igreja ? ` · ${currentUser.igreja.nome}` : '';
+    const rotuloPapel = currentUser?.role === 'admin' ? 'Admin' : currentUser?.role === 'lider' ? 'Líder' : 'Membro';
+    userSpan.innerHTML = `<strong>${currentUser?.name || 'Usuário'}</strong>${igrejaInfo} <span class="user-info-papel">${rotuloPapel}</span>`;
+
     const logoutBtn = document.createElement('button');
     logoutBtn.className = 'btn small secondary';
     logoutBtn.textContent = 'Sair';
     logoutBtn.addEventListener('click', logout);
-    
+
     userInfo.appendChild(userSpan);
     userInfo.appendChild(logoutBtn);
-    header.appendChild(userInfo);
+    brand.appendChild(userInfo);
   }
-  
+
   // Restaurar conteúdo principal
   initMainApp();
 }
@@ -1331,8 +1328,8 @@ async function removerLiderancaMembro(perfilId) {
       currentUser.role = "member";
       currentUser.souLideranca = false;
       saveAuthData(authToken, currentUser);
-      const userSpanAtual = document.querySelector(".user-info span");
-      if (userSpanAtual) userSpanAtual.textContent = userSpanAtual.textContent.replace(/\((Líder|Admin)\)/, "(Membro)");
+      const papelBadge = document.querySelector(".user-info-papel");
+      if (papelBadge) papelBadge.textContent = "Membro";
       const cardConvidar = document.getElementById("cardConvidarMembro");
       if (cardConvidar) cardConvidar.style.display = "none";
       const btnCriar = document.getElementById("btnCriarEscala");
