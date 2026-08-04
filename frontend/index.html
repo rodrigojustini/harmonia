@@ -4,12 +4,13 @@
   <meta charset="UTF-8" />
   <title>Harmonia - Ministério de Louvor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <header class="app-header">
     <div class="brand">
-      <div class="logo-circle">H</div>
+      <img src="assets/logo-h-160.png" alt="Harmonia" class="logo-mark" />
       <div class="brand-text">
         <h1>Harmonia</h1>
         <span>Gestão de Ministério de Louvor</span>
@@ -248,12 +249,31 @@
 
       <div class="grid-2">
         <div class="card">
-          <h3>Novo membro</h3>
+          <h3 id="tituloFormMembro">Novo membro</h3>
           <form id="formMembro">
+            <input type="hidden" id="membroEditandoId" value="" />
+
+            <div class="field-group avatar-field">
+              <label>Foto de perfil</label>
+              <div class="avatar-upload-row">
+                <img id="membroFotoPreview" class="avatar-preview" src="assets/avatar-padrao.svg" alt="Foto" />
+                <div>
+                  <input id="membroFoto" type="file" accept="image/png,image/jpeg,image/webp" />
+                  <small>Opcional. Se não enviar, usamos um avatar padrão com as iniciais.</small>
+                </div>
+              </div>
+            </div>
+
             <div class="field-group">
               <label for="membroNome">Nome</label>
               <input id="membroNome" type="text" required />
             </div>
+
+            <div class="field-group">
+              <label for="membroFuncao">Cargo</label>
+              <input id="membroFuncao" type="text" placeholder="Ex: Vocal líder, Ministro de louvor..." />
+            </div>
+
             <div class="field-group">
               <label for="membroVoz">Voz / Seção</label>
               <select id="membroVoz">
@@ -266,28 +286,78 @@
                 <option value="Técnico">Técnico</option>
               </select>
             </div>
+
             <div class="field-group">
-              <label for="membroFuncao">Função</label>
-              <input id="membroFuncao" type="text" placeholder="Ex: Voz líder, teclado..." />
+              <label>Instrumentos</label>
+              <div class="instrumentos-checkboxes" id="membroInstrumentosBox">
+                <label><input type="checkbox" value="Voz"> Voz</label>
+                <label><input type="checkbox" value="Violão"> Violão</label>
+                <label><input type="checkbox" value="Guitarra"> Guitarra</label>
+                <label><input type="checkbox" value="Baixo"> Baixo</label>
+                <label><input type="checkbox" value="Bateria"> Bateria</label>
+                <label><input type="checkbox" value="Teclado"> Teclado</label>
+                <label><input type="checkbox" value="Cajón"> Cajón</label>
+                <label><input type="checkbox" value="Som/Técnico"> Som/Técnico</label>
+              </div>
+              <input id="membroInstrumentosOutro" type="text" placeholder="Outro instrumento (opcional)" style="margin-top:0.4rem;" />
             </div>
+
             <div class="field-group">
-              <label for="membroAniversario">Aniversário</label>
+              <label for="membroAniversario">Data de nascimento</label>
               <input id="membroAniversario" type="date" />
             </div>
+
+            <div class="field-group">
+              <label for="membroWhatsapp">WhatsApp</label>
+              <input id="membroWhatsapp" type="text" placeholder="(83) 99999-9999" />
+            </div>
+
+            <div class="field-group">
+              <label for="membroEmail">E-mail</label>
+              <input id="membroEmail" type="email" placeholder="nome@exemplo.com" />
+            </div>
+
+            <div class="field-group">
+              <label for="membroBio">Biografia (opcional)</label>
+              <textarea id="membroBio" rows="2" placeholder="Uma breve descrição..."></textarea>
+            </div>
+
+            <div class="field-group">
+              <label for="membroDataEntrada">Data de entrada no ministério</label>
+              <input id="membroDataEntrada" type="date" />
+            </div>
+
+            <div class="field-group">
+              <label for="membroDisponibilidade">Disponibilidade</label>
+              <input id="membroDisponibilidade" type="text" placeholder="Ex: Domingo manhã, Quinta noite" />
+            </div>
+
+            <div class="field-group">
+              <label for="membroStatus">Status</label>
+              <select id="membroStatus">
+                <option value="true">Ativo</option>
+                <option value="false">Inativo</option>
+              </select>
+            </div>
+
             <div class="field-group">
               <label for="membroPerfil">Conta de login (opcional)</label>
               <select id="membroPerfil">
                 <option value="">Sem conta no app</option>
               </select>
-              <small>Só quem tem conta vinculada pode receber pedidos de troca de escala.</small>
+              <small>Só quem tem conta vinculada pode receber pedidos de troca de escala e virar líder.</small>
             </div>
-            <button class="btn primary" type="submit">Salvar membro</button>
+
+            <div class="modal-actions" style="justify-content:flex-start; gap:0.5rem;">
+              <button class="btn primary" type="submit" id="btnSalvarMembro">Salvar membro</button>
+              <button class="btn secondary" type="button" id="btnCancelarEdicaoMembro" style="display:none;">Cancelar edição</button>
+            </div>
           </form>
         </div>
 
         <div class="card">
-          <h3>Lista de membros</h3>
-          <div id="listaMembros" class="list"></div>
+          <h3>Equipe</h3>
+          <div id="listaMembros" class="membros-grid"></div>
         </div>
       </div>
     </section>
@@ -396,12 +466,13 @@
 
   <footer class="app-footer">
     <span>Harmonia • Ministério de Louvor</span>
+    <span class="footer-credito">Desenvolvido por Agência Justini'S</span>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=8"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>

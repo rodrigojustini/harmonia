@@ -52,7 +52,8 @@ async function montarCurrentUser() {
     id: perfil.id,
     name: perfil.nome,
     email: perfil.email,
-    role: perfil.role === "admin" ? "leader" : "member",
+    role: perfil.role, // "admin" | "lider" | "member" (papel real do banco)
+    souLideranca: perfil.role === "admin" || perfil.role === "lider",
     funcao: perfil.funcao,
     igreja: perfil.igreja,
   };
@@ -345,7 +346,7 @@ function showLoginForm() {
   app.innerHTML = `
     <div style="max-width: 400px; margin: 2rem auto; padding: 2rem; background: #1a1a1a; border-radius: 1rem;">
       <div style="text-align: center; margin-bottom: 2rem;">
-        <div class="logo-circle" style="margin: 0 auto 1rem;">H</div>
+        <img src="assets/logo-h-160.png" alt="Harmonia" style="width:64px; height:64px; margin: 0 auto 1rem; display:block; filter: drop-shadow(0 0 10px rgba(212,162,76,0.5));" />
         <h1 style="margin: 0; color: #fff;">Harmonia</h1>
         <p style="color: #bbb; margin: 0.5rem 0 0;">Faça login para continuar</p>
       </div>
@@ -499,7 +500,8 @@ function showMainApp() {
     
     const userSpan = document.createElement('span');
     const igrejaInfo = currentUser?.igreja ? ` | ${currentUser.igreja.nome}` : '';
-    userSpan.textContent = `${currentUser?.name || 'Usuário'}${igrejaInfo} ${currentUser?.role === 'leader' ? '(Líder)' : '(Membro)'}`;
+    const rotuloPapel = currentUser?.role === 'admin' ? '(Admin)' : currentUser?.role === 'lider' ? '(Líder)' : '(Membro)';
+    userSpan.textContent = `${currentUser?.name || 'Usuário'}${igrejaInfo} ${rotuloPapel}`;
     userSpan.style.fontSize = '0.9rem';
     
     const logoutBtn = document.createElement('button');
@@ -824,11 +826,13 @@ function mostrarMapaMusica(musica) {
   card.style.display = "block";
 }
 
-// ====== MEMBROS COM API ======
+// ====== MEMBROS COM API (perfil completo estilo rede social) ======
 let perfisDaIgreja = [];
+let avatarSelecionado = null; // File escolhido no input, aguardando upload
 
 async function carregarPerfisDaIgreja() {
-  const { data, error } = await supabase.from("perfis").select("id, nome").eq("igreja_id", currentUser.igreja.id).order("nome");
+  const { data, error } = await supabase.from("perfis").select("id, nome, role")
+    .eq("igreja_id", currentUser.igreja.id).order("nome");
   if (!error) perfisDaIgreja = data;
 }
 
@@ -846,35 +850,145 @@ async function loadMembros() {
   }
 }
 
+function iniciaisDoNome(nome) {
+  return (nome || "?")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() || "")
+    .join("");
+}
+
+function limparFormMembro() {
+  const form = document.getElementById("formMembro");
+  form.reset();
+  document.getElementById("membroEditandoId").value = "";
+  document.getElementById("tituloFormMembro").textContent = "Novo membro";
+  document.getElementById("btnSalvarMembro").textContent = "Salvar membro";
+  document.getElementById("btnCancelarEdicaoMembro").style.display = "none";
+  document.getElementById("membroFotoPreview").src = "assets/avatar-padrao.svg";
+  avatarSelecionado = null;
+  document.querySelectorAll("#membroInstrumentosBox input[type=checkbox]").forEach((cb) => (cb.checked = false));
+}
+
+function preencherFormMembroParaEdicao(m) {
+  document.getElementById("membroEditandoId").value = m.id;
+  document.getElementById("membroNome").value = m.nome || "";
+  document.getElementById("membroVoz").value = m.voz || "";
+  document.getElementById("membroFuncao").value = m.funcao || "";
+  document.getElementById("membroAniversario").value = m.aniversario || "";
+  document.getElementById("membroWhatsapp").value = m.whatsapp || "";
+  document.getElementById("membroEmail").value = m.email || "";
+  document.getElementById("membroBio").value = m.bio || "";
+  document.getElementById("membroDataEntrada").value = m.data_entrada || "";
+  document.getElementById("membroDisponibilidade").value = m.disponibilidade || "";
+  document.getElementById("membroStatus").value = String(m.ativo !== false);
+  document.getElementById("membroPerfil").value = m.perfil_id || "";
+  document.getElementById("membroFotoPreview").src = m.foto_url || "assets/avatar-padrao.svg";
+
+  const instrumentos = m.instrumentos || [];
+  const outros = [];
+  document.querySelectorAll("#membroInstrumentosBox input[type=checkbox]").forEach((cb) => {
+    cb.checked = instrumentos.includes(cb.value);
+  });
+  instrumentos.forEach((i) => {
+    const existe = document.querySelector(`#membroInstrumentosBox input[value="${i}"]`);
+    if (!existe) outros.push(i);
+  });
+  document.getElementById("membroInstrumentosOutro").value = outros.join(", ");
+
+  document.getElementById("tituloFormMembro").textContent = "Editar membro";
+  document.getElementById("btnSalvarMembro").textContent = "Salvar alterações";
+  document.getElementById("btnCancelarEdicaoMembro").style.display = "inline-block";
+  document.getElementById("formMembro").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function coletarInstrumentosDoForm() {
+  const marcados = Array.from(document.querySelectorAll("#membroInstrumentosBox input[type=checkbox]:checked")).map((cb) => cb.value);
+  const outros = document.getElementById("membroInstrumentosOutro").value
+    .split(",").map((s) => s.trim()).filter(Boolean);
+  return [...marcados, ...outros];
+}
+
+// Faz upload da foto pro bucket "avatars" no caminho {igreja_id}/{membro_id}.ext e devolve a URL pública
+async function enviarFotoMembro(membroId, file) {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const caminho = `${currentUser.igreja.id}/${membroId}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(caminho, file, { upsert: true, cacheControl: "3600" });
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage.from("avatars").getPublicUrl(caminho);
+  return `${data.publicUrl}?v=${Date.now()}`; // ?v= evita cache de foto antiga
+}
+
 function initMembros() {
   loadMembros();
+
+  const fotoInput = document.getElementById("membroFoto");
+  fotoInput.addEventListener("change", () => {
+    const file = fotoInput.files[0];
+    avatarSelecionado = file || null;
+    if (file) {
+      document.getElementById("membroFotoPreview").src = URL.createObjectURL(file);
+    }
+  });
+
+  document.getElementById("btnCancelarEdicaoMembro").addEventListener("click", limparFormMembro);
 
   const form = document.getElementById("formMembro");
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    const editandoId = document.getElementById("membroEditandoId").value || null;
     const nome = document.getElementById("membroNome").value.trim();
     const voz = document.getElementById("membroVoz").value;
     const funcao = document.getElementById("membroFuncao").value.trim();
     const aniversario = document.getElementById("membroAniversario").value || null;
     const perfilId = document.getElementById("membroPerfil").value || null;
+    const whatsapp = document.getElementById("membroWhatsapp").value.trim() || null;
+    const email = document.getElementById("membroEmail").value.trim() || null;
+    const bio = document.getElementById("membroBio").value.trim() || null;
+    const dataEntrada = document.getElementById("membroDataEntrada").value || null;
+    const disponibilidade = document.getElementById("membroDisponibilidade").value.trim() || null;
+    const ativo = document.getElementById("membroStatus").value === "true";
+    const instrumentos = coletarInstrumentosDoForm();
 
     if (!nome) {
       alert("Informe o nome do membro.");
       return;
     }
 
-    try {
-      const { error } = await supabase.from("membros").insert({
-        igreja_id: currentUser.igreja.id, nome, voz, funcao, aniversario, perfil_id: perfilId,
-      });
-      if (error) throw error;
+    const payload = {
+      nome, voz, funcao, aniversario, perfil_id: perfilId, whatsapp, email, bio,
+      data_entrada: dataEntrada, disponibilidade, ativo, instrumentos,
+    };
 
-      form.reset();
+    try {
+      let membroId = editandoId;
+
+      if (editandoId) {
+        const { error } = await supabase.from("membros").update(payload).eq("id", editandoId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("membros")
+          .insert({ igreja_id: currentUser.igreja.id, ...payload })
+          .select().single();
+        if (error) throw error;
+        membroId = data.id;
+      }
+
+      if (avatarSelecionado) {
+        const url = await enviarFotoMembro(membroId, avatarSelecionado);
+        await supabase.from("membros").update({ foto_url: url }).eq("id", membroId);
+      }
+
+      limparFormMembro();
       await loadMembros();
-      showNotification("Membro cadastrado com sucesso!", "success");
+      showNotification(editandoId ? "Membro atualizado!" : "Membro cadastrado com sucesso!", "success");
     } catch (error) {
-      showNotification("Erro ao cadastrar membro: " + error.message, "error");
+      showNotification("Erro ao salvar membro: " + error.message, "error");
     }
   });
 }
@@ -882,6 +996,7 @@ function initMembros() {
 function renderMembros() {
   const listaEl = document.getElementById("listaMembros");
   listaEl.innerHTML = "";
+  listaEl.className = "membros-grid";
 
   document.getElementById("membroPerfil").innerHTML = `<option value="">Sem conta no app</option>` +
     perfisDaIgreja.map((p) => `<option value="${p.id}">${p.nome}</option>`).join("");
@@ -896,33 +1011,117 @@ function renderMembros() {
     .slice()
     .sort((a, b) => a.nome.localeCompare(b.nome))
     .forEach((m) => {
-      const item = document.createElement("div");
-      item.className = "list-item";
+      const card = document.createElement("div");
+      card.className = "membro-card" + (m.ativo === false ? " inativo" : "");
 
-      const main = document.createElement("div");
-      main.className = "list-item-main";
+      const aniversario = m.aniversario ? new Date(m.aniversario + "T00:00:00").toLocaleDateString("pt-BR") : null;
+      const perfilVinculado = m.perfil_id ? perfisDaIgreja.find((p) => p.id === m.perfil_id) : null;
+      const papel = perfilVinculado?.role;
 
-      const aniversario = m.aniversario
-        ? new Date(m.aniversario).toLocaleDateString("pt-BR")
-        : "-";
+      const badgesPapel = papel === "admin"
+        ? `<span class="badge badge-admin">Admin</span>`
+        : papel === "lider"
+        ? `<span class="badge badge-lider">Líder</span>`
+        : "";
 
-      const opcoesPerfil = `<option value="">Sem conta no app</option>` +
-        perfisDaIgreja.map((p) => `<option value="${p.id}" ${p.id === m.perfil_id ? "selected" : ""}>${p.nome}</option>`).join("");
+      const badgeStatus = m.ativo === false
+        ? `<span class="badge badge-inativo">Inativo</span>`
+        : `<span class="badge badge-ativo">Ativo</span>`;
 
-      main.innerHTML = `
-        <strong>${m.nome}</strong>
-        <span>Voz/Seção: ${m.voz || "-"}</span>
-        <span>Função: ${m.funcao || "-"}</span>
-        <span>Aniversário: ${aniversario}</span>
-        <label style="font-size:0.75rem; color:#aaa; margin-top:0.3rem; display:block;">
-          Conta de login:
-          <select style="margin-top:0.2rem;" onchange="vincularContaMembro('${m.id}', this.value)">${opcoesPerfil}</select>
-        </label>
+      const tags = (m.instrumentos || []).map((i) => `<span class="membro-tag">${i}</span>`).join("");
+
+      let infoLinhas = "";
+      if (m.whatsapp) infoLinhas += `<div class="membro-info-linha">📱 ${m.whatsapp}</div>`;
+      if (m.email) infoLinhas += `<div class="membro-info-linha">✉️ ${m.email}</div>`;
+      if (aniversario) infoLinhas += `<div class="membro-info-linha">🎂 ${aniversario}</div>`;
+      if (m.disponibilidade) infoLinhas += `<div class="membro-info-linha">🗓️ ${m.disponibilidade}</div>`;
+      if (m.bio) infoLinhas += `<div class="membro-info-linha">${m.bio}</div>`;
+
+      let acoes = "";
+      if (currentUser?.souLideranca) {
+        acoes += `<button class="btn secondary" onclick='editarMembroPorId("${m.id}")'>Editar</button>`;
+        acoes += `<button class="btn danger" onclick="excluirMembro('${m.id}', '${m.nome.replace(/'/g, "")}')">Excluir</button>`;
+        if (perfilVinculado && papel !== "admin") {
+          if (papel === "lider") {
+            if (perfilVinculado.id === currentUser.id || currentUser.role === "admin") {
+              acoes += `<button class="btn warning" onclick="removerLiderancaMembro('${perfilVinculado.id}')">Remover liderança</button>`;
+            }
+          } else {
+            acoes += `<button class="btn success" onclick="tornarLiderMembro('${perfilVinculado.id}')">Tornar líder</button>`;
+          }
+        }
+      }
+
+      card.innerHTML = `
+        <div class="membro-card-topo">
+          <img class="membro-avatar" src="${m.foto_url || "assets/avatar-padrao.svg"}" alt="${m.nome}">
+          <div class="membro-nome-linha">
+            <strong title="${m.nome}">${m.nome}</strong>
+            <span class="membro-cargo">${m.funcao || m.voz || "—"}</span>
+          </div>
+        </div>
+        <div>${badgeStatus} ${badgesPapel}</div>
+        ${tags ? `<div class="membro-tags">${tags}</div>` : ""}
+        ${infoLinhas}
+        ${acoes ? `<div class="membro-card-acoes">${acoes}</div>` : ""}
       `;
 
-      item.appendChild(main);
-      listaEl.appendChild(item);
+      listaEl.appendChild(card);
     });
+}
+
+function editarMembroPorId(membroId) {
+  const m = membros.find((x) => x.id === membroId);
+  if (m) preencherFormMembroParaEdicao(m);
+}
+
+async function excluirMembro(membroId, nome) {
+  const ok = confirm(`Tem certeza que deseja excluir "${nome}"? Essa ação não pode ser desfeita.`);
+  if (!ok) return;
+  try {
+    const { error } = await supabase.rpc("excluir_membro", { p_membro_id: membroId });
+    if (error) throw error;
+    await loadMembros();
+    showNotification("Membro excluído.", "success");
+  } catch (error) {
+    showNotification("Erro ao excluir: " + error.message, "error");
+  }
+}
+
+async function tornarLiderMembro(perfilId) {
+  try {
+    const { error } = await supabase.rpc("promover_lider", { p_perfil_id: perfilId });
+    if (error) throw error;
+    await loadMembros();
+    showNotification("Agora essa pessoa é líder.", "success");
+  } catch (error) {
+    showNotification("Erro ao promover: " + error.message, "error");
+  }
+}
+
+async function removerLiderancaMembro(perfilId) {
+  const ok = confirm("Remover a liderança dessa pessoa? Ela continua no ministério, só deixa de ser líder.");
+  if (!ok) return;
+  try {
+    const { error } = await supabase.rpc("remover_lideranca", { p_perfil_id: perfilId });
+    if (error) throw error;
+    await loadMembros();
+    // se a pessoa removeu a própria liderança, atualiza o currentUser em memória
+    if (perfilId === currentUser.id) {
+      currentUser.role = "member";
+      currentUser.souLideranca = false;
+      saveAuthData(authToken, currentUser);
+      const userSpanAtual = document.querySelector(".user-info span");
+      if (userSpanAtual) userSpanAtual.textContent = userSpanAtual.textContent.replace(/\((Líder|Admin)\)/, "(Membro)");
+      const cardConvidar = document.getElementById("cardConvidarMembro");
+      if (cardConvidar) cardConvidar.style.display = "none";
+      const btnCriar = document.getElementById("btnCriarEscala");
+      if (btnCriar) btnCriar.style.display = "none";
+    }
+    showNotification("Liderança removida.", "success");
+  } catch (error) {
+    showNotification("Erro ao remover liderança: " + error.message, "error");
+  }
 }
 
 async function vincularContaMembro(membroId, perfilId) {
@@ -1165,7 +1364,7 @@ async function requestWakeLock() {
 
 function initConfig() {
   const cardConvidar = document.getElementById("cardConvidarMembro");
-  if (currentUser?.role === "leader") {
+  if (currentUser?.souLideranca) {
     cardConvidar.style.display = "block";
     document.getElementById("codigoConvite").textContent = currentUser.igreja?.convite_codigo || "—";
 
@@ -1300,7 +1499,7 @@ async function carregarEscala() {
       showNotification(`✅ Escala carregada: ${getMonthName(mes)}/${ano}`, "success");
     } else {
       const confirmar = confirm(`📅 Nenhuma escala encontrada para ${getMonthName(mes)}/${ano}.\n\n✨ Deseja criar uma nova escala?`);
-      if (confirmar && currentUser?.role === "leader") {
+      if (confirmar && currentUser?.souLideranca) {
         await criarEscala();
       } else if (confirmar) {
         alert("❌ Apenas líderes podem criar escalas.");
@@ -1355,14 +1554,14 @@ async function aprovarEscala() {
 function mostrarBotaoCriar() {
   const btnCriar = document.getElementById("btnCriarEscala");
   const btnAprovar = document.getElementById("btnAprovarEscala");
-  if (btnCriar) btnCriar.style.display = currentUser?.role === "leader" ? "inline-block" : "none";
+  if (btnCriar) btnCriar.style.display = currentUser?.souLideranca ? "inline-block" : "none";
   if (btnAprovar) btnAprovar.style.display = "none";
 }
 
 function mostrarBotaoAprovar() {
   document.getElementById("btnCriarEscala").style.display = "none";
   const btnAprovar = document.getElementById("btnAprovarEscala");
-  if (currentUser?.role === "leader" && escalaAtual && !escalaAtual.aprovada) {
+  if (currentUser?.souLideranca && escalaAtual && !escalaAtual.aprovada) {
     btnAprovar.style.display = "inline-block";
   } else {
     btnAprovar.style.display = "none";
@@ -1399,7 +1598,7 @@ function nomeDaCelula(celula) {
 
 function renderizarPlanilha() {
   const container = document.getElementById("escalaCalendario");
-  const souLider = currentUser?.role === "leader";
+  const souLider = currentUser?.souLideranca;
 
   if (!escalaAtual) {
     renderizarPlanilhaVazia();
@@ -1466,7 +1665,7 @@ function renderizarPlanilhaVazia() {
     <div class="card">
       <h3>Nenhuma escala encontrada</h3>
       <p>Não há escala criada para este mês/ano.</p>
-      ${currentUser?.role === "leader" ? `<p><strong>Como líder, você pode criar uma nova escala.</strong></p>` : ""}
+      ${currentUser?.souLideranca ? `<p><strong>Como líder, você pode criar uma nova escala.</strong></p>` : ""}
     </div>
   `;
 }
@@ -1767,7 +1966,7 @@ async function carregarTrocas() {
     
     renderizarTrocas(trocas);
     
-    if (currentUser?.role === "leader") {
+    if (currentUser?.souLideranca) {
       const trocasPendentes = trocas.filter(t => t.status === "aceita_receptor");
       renderizarTrocasPendentes(trocasPendentes);
     }
