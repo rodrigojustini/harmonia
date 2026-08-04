@@ -330,6 +330,26 @@ por isso o nome/igreja/papel ficava espremido colado nas abas em telas menores.
 
 ---
 
+## 15. Sessão 04/08/2026 (tarde) — Hotfix: seletor de culto e cronômetro sumidos no Modo Palco
+
+**Bug real, não relacionado à cifra:** `.palco-topo` (seletor de culto + botão de cronômetro) usa
+`position: absolute`, mas `.palco-tela` (o pai) não tinha `position: relative`. Sem isso, o
+navegador ancora o elemento absoluto no ancestral posicionado mais próximo — que era o
+`.app-header`, que é `position: sticky`. Resultado: a barra ia parar escondida atrás do
+cabeçalho, invisível, mesmo com o código funcionando certinho por trás.
+
+**Correção:** `position: relative` em `.palco-tela`, mais um respiro (`padding-top`) pra a barra
+flutuante não colar em cima do conteúdo. No celular (≤640px) a barra já virava estática antes,
+então ganhou um ajuste separado pra não sobrar espaço em branco.
+
+O comportamento de "Anterior/Próxima não fazem nada" e "painel de cifra não aparece" que foi
+reportado junto era esperado (o culto de teste tinha só 1 música e ela não tinha cifra
+cadastrada) — não era bug.
+
+`style.css?v=6`.
+
+---
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase
