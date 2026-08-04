@@ -350,6 +350,48 @@ cadastrada) — não era bug.
 
 ---
 
+## 16. Sessão 04/08/2026 (tarde) — Auditoria geral antes da apresentação pra igreja
+
+Rodrigo ia apresentar o app pra igreja no mesmo dia e pediu teste geral de tudo. Como não dá
+pra clicar na tela como usuário, a auditoria foi: revisão de código (frontend completo) +
+revisão de RLS de todas as tabelas + logs de produção do Supabase (auth, edge functions).
+
+**🔴 Crítico, achado e DOCUMENTADO (não corrigido — depende de infra externa):**
+Convite por e-mail está bloqueado pra qualquer destinatário que não seja
+`suportejustinistore@gmail.com`. O Resend (provedor de e-mail usado pelo Supabase Auth) está em
+modo sandbox/teste, sem domínio verificado — só manda e-mail pro dono da conta. Pra resolver de
+verdade: verificar um domínio em resend.com/domains e configurar o SMTP do Supabase Auth pra
+usar esse domínio. Isso não é coisa de 5 minutos (precisa de acesso DNS).
+**Contorno pra hoje: usar o "Código de convite da igreja"** (já existe na tela de Config, embaixo
+do formulário de convite por e-mail) — a pessoa cria a própria conta digitando o código, sem
+precisar de e-mail nenhum.
+
+**🟡 Achados corrigidos nesta sessão:**
+- `convidar-membro` (Edge Function) só permitia `role === 'admin'` convidar, mas o frontend já
+  mostrava essa tela pra líder também (desde a Fase 1) — líder recebia 403 ao tentar. Corrigido
+  pra aceitar `admin` e `lider`, redeployado (v2)
+- Aba "🎂 Aniversários" — a funcionalidade já existia inteira (`renderAniversariantes()`,
+  seção no HTML) mas nunca teve botão no menu. Ninguém conseguia chegar nela. Adicionado o botão
+
+**🟡 Achados documentados, não corrigidos (baixo risco pra hoje, ficam pra depois):**
+- Aba **Histórico** nunca mostra nada — nenhuma parte do sistema escreve na tabela `historico`
+  (só tem leitura). Recomendação pra hoje: não abrir essa aba na apresentação. Implementar de
+  verdade (escrever log em cada ação relevante) é escopo de sessão própria
+- RLS de `trocas_escala` e `historico` ainda usa a policy antiga (`isolamento igreja`, sem
+  checar papel) — qualquer membro logado tecnicamente pode mexer em troca/histórico de
+  qualquer um. Baixo risco de acontecer sem querer numa demonstração, mas vale endurecer depois
+- Tabelas `escala_membros` e `escala_musicas`, e a rota `/escalas/:id/musicas` no shim de API,
+  são código morto — sobras de antes da migração pro formato planilha. Não afetam nada hoje
+
+**🟢 Confirmado funcionando** (testado pelo próprio Rodrigo nesta sessão): Modo Palco completo
+(navegação, cifra, auto-rolagem, cronômetro), tema claro/escuro, cabeçalho responsivo, dashboard
+com dados reais, confirmação de presença por líder em qualquer célula.
+
+**🟢 Dados de produção limpos:** duplicatas de música "tu es dugno" (4 cópias → 1) e de
+repertório pessoal "ter" (2 cópias → 0) removidas direto no banco, sem precisar de deploy.
+
+---
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase
