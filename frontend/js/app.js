@@ -70,6 +70,29 @@ async function login(email, password) {
 
 // modoIgreja: "criar" (cria igreja nova, usuário vira admin) ou "entrar" (usa código de convite)
 async function register(name, email, password, modoIgreja, igrejaCampo) {
+  if (modoIgreja === "criar") {
+    const nomeDigitado = igrejaCampo.trim();
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/verificar-igreja`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
+        body: JSON.stringify({ nome: nomeDigitado }),
+      });
+      const check = await resp.json();
+      if (check.existe) {
+        const seguir = confirm(
+          `Já existe uma igreja chamada "${check.nomeEncontrado}" cadastrada no Harmonia.\n\n` +
+          `Se é a mesma igreja, cancele e peça o código de convite pra quem já é líder lá — não digite o nome de novo, isso cria uma igreja separada e vazia.\n\n` +
+          `Clique OK só se for uma igreja realmente diferente, com o mesmo nome por coincidência.`
+        );
+        if (!seguir) throw new Error("Cadastro cancelado. Peça o código de convite pra entrar na igreja já existente.");
+      }
+    } catch (e) {
+      if (e.message.includes("Cadastro cancelado")) throw e;
+      // se a verificação falhar por qualquer motivo de rede, segue o cadastro normalmente
+    }
+  }
+
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw new Error(error.message === "User already registered" ? "E-mail já cadastrado." : error.message);
   if (!data.session) {
@@ -362,10 +385,10 @@ function showLoginForm() {
           <div class="field-group">
             <label style="display:block; margin-bottom:0.5rem;">Sua igreja</label>
             <label style="display:flex; align-items:center; gap:0.5rem; color:#ddd; font-weight:normal; margin-bottom:0.4rem;">
-              <input type="radio" name="modoIgreja" value="criar" checked> Cadastrar minha igreja agora (você vira admin)
+              <input type="radio" name="modoIgreja" value="criar" checked> Sou a primeira pessoa da minha igreja a usar o Harmonia
             </label>
             <label style="display:flex; align-items:center; gap:0.5rem; color:#ddd; font-weight:normal;">
-              <input type="radio" name="modoIgreja" value="entrar"> Já tenho um código de convite
+              <input type="radio" name="modoIgreja" value="entrar"> Minha igreja já usa o Harmonia (tenho um código de convite)
             </label>
           </div>
           <div class="field-group">
