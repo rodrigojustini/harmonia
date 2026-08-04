@@ -237,14 +237,16 @@ async function apiCall(endpoint, options = {}) {
     // ---- TROCAS ----
     if (path === "/trocas" && method === "GET") {
       const { data, error } = await supabase.from("trocas_escala")
-        .select("*, solicitante:perfis!trocas_escala_solicitante_id_fkey(id, nome), receptor:perfis!trocas_escala_receptor_id_fkey(id, nome)")
+        .select(`*, solicitante:perfis!trocas_escala_solicitante_id_fkey(id, nome), receptor:perfis!trocas_escala_receptor_id_fkey(id, nome),
+          celula:escala_celulas(id, coluna:escala_colunas(nome), linha:escala_linhas(dias, datas))`)
         .order("solicitado_em", { ascending: false });
       if (error) throw error;
       return data.map(t => ({
-        id: t.id, status: t.status, data: t.data, funcao: t.funcao, observacao: t.observacao,
+        id: t.id, status: t.status, data: t.data, funcao: t.funcao || t.celula?.coluna?.nome, observacao: t.observacao,
         solicitadoEm: t.solicitado_em, solicitanteId: t.solicitante_id, receptorId: t.receptor_id,
         solicitante: t.solicitante ? { name: t.solicitante.nome } : null,
         receptor: t.receptor ? { name: t.receptor.nome } : null,
+        celulaInfo: t.celula ? `${t.celula.linha?.dias} (${t.celula.linha?.datas})` : null,
       }));
     }
     if ((m = path.match(/^\/trocas\/(.+)\/responder$/)) && method === "PUT") {
@@ -802,13 +804,22 @@ function mostrarMapaMusica(musica) {
 }
 
 // ====== MEMBROS COM API ======
+let perfisDaIgreja = [];
+
+async function carregarPerfisDaIgreja() {
+  const { data, error } = await supabase.from("perfis").select("id, nome").eq("igreja_id", currentUser.igreja.id).order("nome");
+  if (!error) perfisDaIgreja = data;
+}
+
 async function loadMembros() {
   try {
-    membros = await apiCall("/membros");
+    await carregarPerfisDaIgreja();
+    const { data, error } = await supabase.from("membros").select("*").order("nome");
+    if (error) throw error;
+    membros = data;
     renderMembros();
   } catch (error) {
     console.error("Erro ao carregar membros:", error);
-    // Fallback para dados locais
     membros = loadData(STORAGE_KEYS.MEMBROS);
     renderMembros();
   }
@@ -825,6 +836,7 @@ function initMembros() {
     const voz = document.getElementById("membroVoz").value;
     const funcao = document.getElementById("membroFuncao").value.trim();
     const aniversario = document.getElementById("membroAniversario").value || null;
+    const perfilId = document.getElementById("membroPerfil").value || null;
 
     if (!nome) {
       alert("Informe o nome do membro.");
@@ -832,22 +844,16 @@ function initMembros() {
     }
 
     try {
-      await apiCall("/membros", {
-        method: "POST",
-        body: JSON.stringify({
-          nome,
-          voz,
-          funcao,
-          aniversario,
-        }),
+      const { error } = await supabase.from("membros").insert({
+        igreja_id: currentUser.igreja.id, nome, voz, funcao, aniversario, perfil_id: perfilId,
       });
+      if (error) throw error;
 
       form.reset();
       await loadMembros();
-      
-      alert("Membro cadastrado com sucesso!");
+      showNotification("Membro cadastrado com sucesso!", "success");
     } catch (error) {
-      alert("Erro ao cadastrar membro: " + error.message);
+      showNotification("Erro ao cadastrar membro: " + error.message, "error");
     }
   });
 }
@@ -855,6 +861,9 @@ function initMembros() {
 function renderMembros() {
   const listaEl = document.getElementById("listaMembros");
   listaEl.innerHTML = "";
+
+  document.getElementById("membroPerfil").innerHTML = `<option value="">Sem conta no app</option>` +
+    perfisDaIgreja.map((p) => `<option value="${p.id}">${p.nome}</option>`).join("");
 
   if (membros.length === 0) {
     listaEl.innerHTML =
@@ -876,16 +885,34 @@ function renderMembros() {
         ? new Date(m.aniversario).toLocaleDateString("pt-BR")
         : "-";
 
+      const opcoesPerfil = `<option value="">Sem conta no app</option>` +
+        perfisDaIgreja.map((p) => `<option value="${p.id}" ${p.id === m.perfil_id ? "selected" : ""}>${p.nome}</option>`).join("");
+
       main.innerHTML = `
         <strong>${m.nome}</strong>
         <span>Voz/Seção: ${m.voz || "-"}</span>
         <span>Função: ${m.funcao || "-"}</span>
         <span>Aniversário: ${aniversario}</span>
+        <label style="font-size:0.75rem; color:#aaa; margin-top:0.3rem; display:block;">
+          Conta de login:
+          <select style="margin-top:0.2rem;" onchange="vincularContaMembro('${m.id}', this.value)">${opcoesPerfil}</select>
+        </label>
       `;
 
       item.appendChild(main);
       listaEl.appendChild(item);
     });
+}
+
+async function vincularContaMembro(membroId, perfilId) {
+  try {
+    const { error } = await supabase.from("membros").update({ perfil_id: perfilId || null }).eq("id", membroId);
+    if (error) throw error;
+    await loadMembros();
+    showNotification("Vínculo atualizado!", "success");
+  } catch (error) {
+    showNotification("Erro ao vincular: " + error.message, "error");
+  }
 }
 
 // ====== ANIVERSÁRIOS ======
@@ -1230,6 +1257,8 @@ async function initEscala() {
   btnCarregarEscala.addEventListener("click", carregarEscala);
   btnCriarEscala?.addEventListener("click", criarEscala);
   btnAprovarEscala?.addEventListener("click", aprovarEscala);
+  document.getElementById("btnBaixarPdf")?.addEventListener("click", baixarEscalaPdf);
+  document.getElementById("btnCopiarZap")?.addEventListener("click", copiarEscalaZap);
 }
 
 async function carregarEscala() {
@@ -1324,6 +1353,7 @@ async function carregarPlanilha() {
     supabase.from("escala_colunas").select("*").eq("escala_id", escalaAtual.id).order("ordem"),
     supabase.from("escala_linhas").select("*").eq("escala_id", escalaAtual.id).order("ordem"),
     supabase.from("escala_celulas").select("*").eq("escala_id", escalaAtual.id),
+    loadMembros(),
   ]);
   if (colunasRes.error) throw colunasRes.error;
   if (linhasRes.error) throw linhasRes.error;
@@ -1355,6 +1385,9 @@ function renderizarPlanilha() {
     return;
   }
 
+  document.getElementById("btnBaixarPdf").style.display = "inline-block";
+  document.getElementById("btnCopiarZap").style.display = "inline-block";
+
   let html = `<div class="planilha-wrapper"><table class="planilha-escala"><thead><tr>
     <th>Dias</th><th>Datas</th>`;
 
@@ -1378,7 +1411,13 @@ function renderizarPlanilha() {
     escalaColunas.forEach((col) => {
       const celula = celulaDe(linha.id, col.id);
       const nome = nomeDaCelula(celula);
-      html += `<td class="celula-escala" ${souLider ? `onclick="editarCelula('${linha.id}', '${col.id}')"` : ""}>${nome || (souLider ? '<span style="color:#555;">+ definir</span>' : "—")}</td>`;
+      let onclickAttr = "";
+      if (souLider) {
+        onclickAttr = `onclick="editarCelula('${linha.id}', '${col.id}')"`;
+      } else if (nome) {
+        onclickAttr = `onclick="solicitarTrocaCelula('${celula.id}', '${col.nome.replace(/'/g, "\\'")}', '${nome.replace(/'/g, "\\'")}')"`;
+      }
+      html += `<td class="celula-escala" ${onclickAttr}>${nome || (souLider ? '<span style="color:#555;">+ definir</span>' : "—")}</td>`;
     });
 
     if (souLider) {
@@ -1400,6 +1439,8 @@ function renderizarPlanilha() {
 
 function renderizarPlanilhaVazia() {
   const container = document.getElementById("escalaCalendario");
+  document.getElementById("btnBaixarPdf").style.display = "none";
+  document.getElementById("btnCopiarZap").style.display = "none";
   container.innerHTML = `
     <div class="card">
       <h3>Nenhuma escala encontrada</h3>
@@ -1474,32 +1515,181 @@ async function editarLinha(linhaId, campo, valor) {
   }
 }
 
+let celulaEmEdicao = null;
+
+function fecharModal(id) {
+  document.getElementById(id).style.display = "none";
+}
+
 async function editarCelula(linhaId, colunaId) {
   await loadMembros();
-  const nomesDisponiveis = membros.map((m) => m.nome).join(", ");
-  const atual = nomeDaCelula(celulaDe(linhaId, colunaId));
-  const nome = prompt(`Quem vai nessa função?\n\nMembros cadastrados: ${nomesDisponiveis || "(nenhum cadastrado ainda)"}\n\nDigite o nome (ou deixe em branco pra limpar):`, atual);
-  if (nome === null) return;
+  celulaEmEdicao = { linhaId, colunaId };
 
+  const coluna = escalaColunas.find((c) => c.id === colunaId);
+  document.getElementById("tituloEditarCelula").textContent = `Quem vai em "${coluna?.nome || ""}"?`;
+
+  const select = document.getElementById("celulaMembroSelect");
+  select.innerHTML = `<option value="">— Selecione —</option>` +
+    membros.map((m) => `<option value="${m.id}">${m.nome}</option>`).join("") +
+    `<option value="__outro__">Outro (digitar nome)</option>`;
+
+  const nomeLivreGroup = document.getElementById("celulaNomeLivreGroup");
+  const nomeLivreInput = document.getElementById("celulaNomeLivre");
+  nomeLivreGroup.style.display = "none";
+  nomeLivreInput.value = "";
+
+  const celulaAtual = celulaDe(linhaId, colunaId);
+  if (celulaAtual?.membro_id) {
+    select.value = celulaAtual.membro_id;
+  } else if (celulaAtual?.nome_livre) {
+    select.value = "__outro__";
+    nomeLivreGroup.style.display = "block";
+    nomeLivreInput.value = celulaAtual.nome_livre;
+  } else {
+    select.value = "";
+  }
+
+  document.getElementById("modalEditarCelula").style.display = "block";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const select = document.getElementById("celulaMembroSelect");
+  select?.addEventListener("change", () => {
+    document.getElementById("celulaNomeLivreGroup").style.display = select.value === "__outro__" ? "block" : "none";
+  });
+
+  document.getElementById("btnLimparCelula")?.addEventListener("click", async () => {
+    if (!celulaEmEdicao) return;
+    await salvarCelula(null, null);
+  });
+
+  document.getElementById("formEditarCelula")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!celulaEmEdicao) return;
+    const select = document.getElementById("celulaMembroSelect");
+    if (select.value === "__outro__") {
+      const nome = document.getElementById("celulaNomeLivre").value.trim();
+      if (!nome) { showNotification("Digite um nome.", "error"); return; }
+      await salvarCelula(null, nome);
+    } else if (select.value) {
+      await salvarCelula(select.value, null);
+    } else {
+      await salvarCelula(null, null);
+    }
+  });
+});
+
+async function salvarCelula(membroId, nomeLivre) {
+  const { linhaId, colunaId } = celulaEmEdicao;
   try {
-    if (!nome.trim()) {
+    if (!membroId && !nomeLivre) {
       const celula = celulaDe(linhaId, colunaId);
       if (celula) {
         const { error } = await supabase.from("escala_celulas").delete().eq("id", celula.id);
         if (error) throw error;
       }
     } else {
-      const membro = membros.find((m) => m.nome.toLowerCase() === nome.trim().toLowerCase());
       const payload = {
         igreja_id: currentUser.igreja.id, escala_id: escalaAtual.id, linha_id: linhaId, coluna_id: colunaId,
-        membro_id: membro ? membro.id : null, nome_livre: membro ? null : nome.trim(),
+        membro_id: membroId, nome_livre: nomeLivre,
       };
       const { error } = await supabase.from("escala_celulas").upsert(payload, { onConflict: "linha_id,coluna_id" });
       if (error) throw error;
     }
+    fecharModal("modalEditarCelula");
     await carregarPlanilha();
   } catch (error) {
     showNotification("Erro ao salvar escalação: " + error.message, "error");
+  }
+}
+
+async function solicitarTrocaCelula(celulaId, nomeColuna, nomeAtual) {
+  const celula = escalaCelulas.find((c) => c.id === celulaId);
+  if (!celula) return;
+
+  if (celula.membro_id) {
+    await carregarPerfisDaIgreja();
+    const { data: membro } = await supabase.from("membros").select("perfil_id").eq("id", celula.membro_id).single();
+    if (!membro?.perfil_id) {
+      alert(`${nomeAtual} ainda não tem conta no Harmonia, então não dá pra mandar o pedido por aqui. Fala direto com essa pessoa.`);
+      return;
+    }
+    if (membro.perfil_id === currentUser.id) {
+      alert("Essa escalação já é sua — não faz sentido pedir troca com você mesmo 🙂");
+      return;
+    }
+
+    const confirmar = confirm(`Solicitar troca com ${nomeAtual} em "${nomeColuna}"?`);
+    if (!confirmar) return;
+
+    const observacao = prompt("Quer deixar uma mensagem junto do pedido? (opcional)") || null;
+
+    try {
+      const { error } = await supabase.from("trocas_escala").insert({
+        igreja_id: currentUser.igreja.id, escala_id: escalaAtual.id, celula_id: celulaId,
+        solicitante_id: currentUser.id, receptor_id: membro.perfil_id, observacao, status: "pendente",
+      });
+      if (error) throw error;
+      showNotification(`Pedido de troca enviado para ${nomeAtual}!`, "success");
+    } catch (error) {
+      showNotification("Erro ao solicitar troca: " + error.message, "error");
+    }
+  } else {
+    alert(`${nomeAtual} ainda não tem conta no Harmonia, então não dá pra mandar o pedido por aqui. Fala direto com essa pessoa.`);
+  }
+}
+
+function baixarEscalaPdf() {
+  if (!escalaAtual) return;
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    const titulo = `ESCALA EQUIPE DE MÚSICA ${(currentUser.igreja?.nome || "").toUpperCase()} — ${getMonthName(escalaAtual.mes).toUpperCase()}/${String(escalaAtual.ano).slice(-2)}`;
+    doc.setFontSize(14);
+    doc.text(titulo, doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+
+    const head = [["Dias", "Datas", ...escalaColunas.map((c) => c.nome)]];
+    const body = escalaLinhas.map((linha) => [
+      linha.dias,
+      linha.datas,
+      ...escalaColunas.map((col) => nomeDaCelula(celulaDe(linha.id, col.id)) || "****"),
+    ]);
+
+    doc.autoTable({
+      head, body, startY: 22,
+      headStyles: { fillColor: [46, 204, 113], textColor: 255, fontStyle: "bold", halign: "center" },
+      bodyStyles: { halign: "center", fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [255, 249, 219] },
+      styles: { fontSize: 9, cellPadding: 3 },
+    });
+
+    doc.save(`escala-${getMonthName(escalaAtual.mes).toLowerCase()}-${escalaAtual.ano}.pdf`);
+  } catch (error) {
+    console.error(error);
+    showNotification("Erro ao gerar PDF: " + error.message, "error");
+  }
+}
+
+async function copiarEscalaZap() {
+  if (!escalaAtual) return;
+  try {
+    let texto = `*ESCALA EQUIPE DE MÚSICA ${(currentUser.igreja?.nome || "").toUpperCase()}*\n`;
+    texto += `_${getMonthName(escalaAtual.mes)}/${escalaAtual.ano}_\n\n`;
+
+    escalaLinhas.forEach((linha) => {
+      texto += `📅 *${linha.dias} (${linha.datas})*\n`;
+      escalaColunas.forEach((col) => {
+        const nome = nomeDaCelula(celulaDe(linha.id, col.id));
+        if (nome) texto += `   ${col.nome}: ${nome}\n`;
+      });
+      texto += `\n`;
+    });
+
+    await navigator.clipboard.writeText(texto);
+    showNotification("Escala copiada! Agora é só colar no WhatsApp.", "success");
+  } catch (error) {
+    showNotification("Erro ao copiar: " + error.message, "error");
   }
 }
 
@@ -1609,7 +1799,7 @@ function renderizarTrocas(trocas) {
         <span class="troca-status ${troca.status}">${getStatusTroca(troca.status)}</span>
       </div>
       <div class="troca-detalhes">
-        <p><strong>Data:</strong> ${formatDate(troca.data)} | <strong>Função:</strong> ${troca.funcao}</p>
+        <p><strong>${troca.celulaInfo ? "Quando:" : "Data:"}</strong> ${troca.celulaInfo || formatDate(troca.data)} | <strong>Função:</strong> ${troca.funcao || "-"}</p>
         ${troca.observacao ? `<p><strong>Observação:</strong> ${troca.observacao}</p>` : ''}
         <p><strong>Solicitado em:</strong> ${formatDateTime(troca.solicitadoEm)}</p>
       </div>
@@ -1637,7 +1827,7 @@ function renderizarTrocasPendentes(trocas) {
         <span class="troca-status aceita_receptor">Aguardando Aprovação</span>
       </div>
       <div class="troca-detalhes">
-        <p><strong>Data:</strong> ${formatDate(troca.data)} | <strong>Função:</strong> ${troca.funcao}</p>
+        <p><strong>${troca.celulaInfo ? "Quando:" : "Data:"}</strong> ${troca.celulaInfo || formatDate(troca.data)} | <strong>Função:</strong> ${troca.funcao || "-"}</p>
         ${troca.observacao ? `<p><strong>Observação:</strong> ${troca.observacao}</p>` : ''}
       </div>
       <div class="troca-actions">

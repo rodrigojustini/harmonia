@@ -1,10 +1,19 @@
 :root {
-  --verde: #2ecc71;
-  --verde-escuro: #27ae60;
-  --preto: #111111;
-  --cinza-escuro: #1b1b1b;
-  --cinza-claro: #f5f5f5;
-  --branco: #ffffff;
+  --verde: #d4a24c;        /* dourado/âmbar - luz de palco */
+  --verde-escuro: #b8863a; /* âmbar mais profundo */
+  --vinho: #6b3346;        /* bordô - destaque secundário */
+  --preto: #211a1f;        /* grafite-ardósia, não preto puro */
+  --cinza-escuro: #2a2226; /* cards */
+  --cinza-claro: #3a2f34;
+  --branco: #f2e9dc;       /* areia clara, não branco puro */
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+
+h1, h2, h3, h4, .brand h1, .card h3, .card h4 {
+  font-family: "Fraunces", Georgia, serif;
+  font-optical-sizing: auto;
+  letter-spacing: 0.01em;
 }
 
 /* Reset */
@@ -17,7 +26,7 @@
 }
 
 body {
-  background: radial-gradient(circle at top, #1f3d2d 0, #050505 50%, #000 100%);
+  background: radial-gradient(circle at top, #3a2a30 0, #211a1f 50%, #16111a 100%);
   color: var(--branco);
   min-height: 100vh;
   display: flex;
@@ -53,7 +62,7 @@ body {
   font-weight: 700;
   font-size: 1.2rem;
   color: var(--branco);
-  box-shadow: 0 0 12px rgba(46, 204, 113, 0.6);
+  box-shadow: 0 0 12px rgba(212, 162, 76, 0.5);
 }
 
 .brand-text h1 {
@@ -181,7 +190,7 @@ label {
 
 input,
 textarea {
-  background: #101010;
+  background: #1a1418;
   border-radius: 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 0.45rem 0.6rem;
@@ -219,7 +228,7 @@ textarea {
 .btn.primary {
   background: var(--verde-escuro);
   color: var(--branco);
-  box-shadow: 0 4px 10px rgba(39, 174, 96, 0.5);
+  box-shadow: 0 4px 10px rgba(184, 134, 58, 0.4);
 }
 
 .btn.danger {
@@ -396,7 +405,7 @@ textarea {
   align-items: center;
   padding: 0.2rem;
   margin: 0.1rem 0;
-  background: rgba(46, 204, 113, 0.1);
+  background: rgba(212, 162, 76, 0.1);
   border-radius: 3px;
   border-left: 2px solid var(--verde);
 }
@@ -693,11 +702,11 @@ textarea {
 }
 
 .planilha-escala tbody tr:nth-child(odd) td {
-  background: #141414;
+  background: #221b20;
 }
 
 .planilha-escala tbody tr.linha-destaque td {
-  background: rgba(46, 204, 113, 0.08);
+  background: rgba(212, 162, 76, 0.08);
 }
 
 .celula-escala {
@@ -707,7 +716,7 @@ textarea {
 }
 
 .celula-escala:hover {
-  background: rgba(46, 204, 113, 0.15) !important;
+  background: rgba(212, 162, 76, 0.18) !important;
 }
 
 .input-inline {
