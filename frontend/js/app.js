@@ -385,10 +385,10 @@ function showLoginForm() {
           </div>
           <div class="field-group">
             <label style="display:block; margin-bottom:0.5rem;">Sua igreja</label>
-            <label style="display:flex; align-items:center; gap:0.5rem; color:#ddd; font-weight:normal; margin-bottom:0.4rem;">
+            <label style="display:flex; align-items:center; gap:0.5rem; color:var(--branco); font-weight:normal; margin-bottom:0.4rem;">
               <input type="radio" name="modoIgreja" value="criar" checked> Sou a primeira pessoa da minha igreja a usar o Harmonia
             </label>
-            <label style="display:flex; align-items:center; gap:0.5rem; color:#ddd; font-weight:normal;">
+            <label style="display:flex; align-items:center; gap:0.5rem; color:var(--branco); font-weight:normal;">
               <input type="radio" name="modoIgreja" value="entrar"> Minha igreja já usa o Harmonia (tenho um código de convite)
             </label>
           </div>
@@ -694,7 +694,7 @@ function renderMusicas() {
 
   if (musicas.length === 0) {
     listaEl.innerHTML =
-      "<p style='font-size:0.85rem;color:#bbb;'>Nenhuma música cadastrada ainda.</p>";
+      "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhuma música cadastrada ainda.</p>";
     return;
   }
 
@@ -717,7 +717,7 @@ function renderMusicas() {
         }
         ${
           m.cifra
-            ? `<span style="font-size:0.75rem;color:#aaa;">Cifra cadastrada</span>`
+            ? `<span style="font-size:0.75rem;color:var(--texto-secundario);">Cifra cadastrada</span>`
             : ""
         }
       `;
@@ -801,7 +801,7 @@ function mostrarMapaMusica(musica) {
         cifraTransposta
           ? `
         <p style="margin-top:0.6rem;"><strong>Cifra transposta:</strong></p>
-        <pre style="background:#101010;padding:0.6rem;border-radius:0.5rem;white-space:pre-wrap;font-size:0.8rem;">${cifraTransposta}</pre>
+        <pre style="background:#101010;color:#e8dfd2;padding:0.6rem;border-radius:0.5rem;white-space:pre-wrap;font-size:0.8rem;">${cifraTransposta}</pre>
       `
           : ""
       }
@@ -922,8 +922,8 @@ function renderRepertorioPessoal() {
 
   if (filtradas.length === 0) {
     listaEl.innerHTML = repertorioPessoal.length === 0
-      ? "<p style='font-size:0.85rem;color:#bbb;'>Sua biblioteca está vazia. Adicione a primeira música ao lado.</p>"
-      : "<p style='font-size:0.85rem;color:#bbb;'>Nenhuma música encontrada pra essa busca.</p>";
+      ? "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Sua biblioteca está vazia. Adicione a primeira música ao lado.</p>"
+      : "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhuma música encontrada pra essa busca.</p>";
     return;
   }
 
@@ -1019,7 +1019,7 @@ function mostrarMapaRepertorioPessoal(musica) {
       </div>
       ${musica.link ? `<p style="margin-top:0.6rem;"><a href="${musica.link}" target="_blank" style="color:#2ecc71;">Abrir link</a></p>` : ""}
       ${cifraTransposta ? `<p style="margin-top:0.6rem;"><strong>Cifra transposta:</strong></p>
-        <pre style="background:#101010;padding:0.6rem;border-radius:0.5rem;white-space:pre-wrap;font-size:0.8rem;">${cifraTransposta}</pre>` : ""}
+        <pre style="background:#101010;color:#e8dfd2;padding:0.6rem;border-radius:0.5rem;white-space:pre-wrap;font-size:0.8rem;">${cifraTransposta}</pre>` : ""}
       <p style="margin-top:0.6rem;"><strong>Observações:</strong></p>
       <p>${musica.observacoes || "Nenhuma observação cadastrada."}</p>
     `;
@@ -1223,7 +1223,7 @@ function renderMembros() {
 
   if (membros.length === 0) {
     listaEl.innerHTML =
-      "<p style='font-size:0.85rem;color:#bbb;'>Nenhum membro cadastrado ainda.</p>";
+      "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhum membro cadastrado ainda.</p>";
     return;
   }
 
@@ -1362,7 +1362,7 @@ function renderAniversariantes() {
 
   if (membros.length === 0) {
     listaEl.innerHTML =
-      "<p style='font-size:0.85rem;color:#bbb;'>Nenhum membro cadastrado.</p>";
+      "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhum membro cadastrado.</p>";
     return;
   }
 
@@ -1375,7 +1375,7 @@ function renderAniversariantes() {
 
   if (aniversariantes.length === 0) {
     listaEl.innerHTML =
-      "<p style='font-size:0.85rem;color:#bbb;'>Nenhum aniversariante neste mês.</p>";
+      "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhum aniversariante neste mês.</p>";
     return;
   }
 
@@ -1479,7 +1479,7 @@ function renderCultos() {
 
   if (cultos.length === 0) {
     listaEl.innerHTML =
-      "<p style='font-size:0.85rem;color:#bbb;'>Nenhum culto cadastrado ainda.</p>";
+      "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhum culto cadastrado ainda.</p>";
     return;
   }
 
@@ -1558,9 +1558,9 @@ function mostrarDetalhesCulto(culto) {
   // Adicionar link de compartilhamento se disponível
   if (culto.shareSlug) {
     html += `
-      <div style="margin-top: 1rem; padding: 1rem; background: #2a2a2a; border-radius: 0.5rem;">
+      <div style="margin-top: 1rem; padding: 1rem; background: #2a2a2a; color: #f2e9dc; border-radius: 0.5rem;">
         <p><strong>Link de compartilhamento:</strong></p>
-        <code style="word-break: break-all;">${window.location.origin}/culto/${culto.shareSlug}</code>
+        <code style="word-break: break-all; color: #f2e9dc;">${window.location.origin}/culto/${culto.shareSlug}</code>
       </div>
     `;
   }
@@ -1938,7 +1938,7 @@ function renderizarPlanilha() {
   html += `</tr></thead><tbody>`;
 
   if (escalaLinhas.length === 0) {
-    html += `<tr><td colspan="${escalaColunas.length + 2 + (souLider ? 1 : 0)}" style="text-align:center; color:#888; padding:1.5rem;">
+    html += `<tr><td colspan="${escalaColunas.length + 2 + (souLider ? 1 : 0)}" style="text-align:center; color:var(--texto-secundario); padding:1.5rem;">
       Nenhuma linha ainda.${souLider ? " Clique em \"+ Linha\" abaixo pra adicionar as datas do mês." : ""}
     </td></tr>`;
   }
@@ -1968,7 +1968,7 @@ function renderizarPlanilha() {
         }
       }
 
-      html += `<td class="celula-escala" ${onclickAttr}>${nome ? nome + badgeConfirmacao : (souLider ? '<span style="color:#555;">+ definir</span>' : "—")}</td>`;
+      html += `<td class="celula-escala" ${onclickAttr}>${nome ? nome + badgeConfirmacao : (souLider ? '<span style="color:var(--texto-terciario);">+ definir</span>' : "—")}</td>`;
     });
 
     if (souLider) {

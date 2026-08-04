@@ -249,7 +249,46 @@ arquivo `frontend/js/app.js`) se a mudança realmente está lá, antes de testar
 
 ---
 
+## 12. Sessão 04/08/2026 (tarde) — Correção real do tema claro + repaginada visual
 
+O tema claro "não fazia nada" porque **duas coisas** estavam erradas ao mesmo tempo:
+
+1. `style.css` nunca tinha `?v=` de cache-busting (diferente do `app.js`, que sempre teve).
+   O navegador ficava servindo uma cópia velha do CSS pra sempre — corrigido na sessão anterior
+   (`?v=2`), mas sozinho não resolveu tudo.
+2. **O bug de verdade:** dezenas de regras no CSS (e vários trechos de HTML gerado no `app.js`)
+   tinham cor fixa (`#bbb`, `#1a1418`, `rgba(10,10,10,0.9)` etc.) em vez de usar as variáveis de
+   tema. No claro, o fundo virava creme mas o texto/cartão continuava escondido atrás de fundo
+   escuro fixo — por isso "o nome quase some" e os cards pareciam não mudar.
+
+**O que foi corrigido (auditoria completa, não só os pontos reportados):**
+- `.card`, `.membro-card`, `.dash-card`, `.list-item`, inputs/`select`/textarea, modal, badges de
+  histórico/troca — tudo migrado pra variáveis de tema (`--texto-secundario`,
+  `--texto-terciario`, `--input-bg`, `--superficie-sutil`, etc.)
+- Cabeçalho, rodapé e tela de login continuam **propositalmente escuros nos dois temas** —
+  é a identidade de marca (dourado sobre grafite, como a logo), não muda com o tema. Corrigi o
+  texto deles pra cor fixa clara (antes usava a variável que trocava e sumia)
+- Blocos de cifra/código e a caixinha de link de compartilhamento também ficam escuros sempre
+  (como um editor de código) — só que agora o texto deles tem cor fixa clara garantida (antes
+  também sumia no tema claro por herdar a variável errada)
+- `color-scheme: dark` / `light` no `:root` pra selects, scrollbars e outros controles nativos
+  do navegador acompanharem o tema
+
+**Repaginada visual ("cards flutuantes", pedido explícito):**
+- `.card`, `.dash-card`, `.membro-card` e `.modal-content` ganharam sombra em duas camadas
+  (`--sombra-card` / `--sombra-card-hover`) e leve elevação (`translateY`) no hover — efeito de
+  flutuação real, não só borda
+- Bordas mais sutis e coerentes (`--cor-borda-sutil`) em vez de branco fixo em opacidade baixa
+
+**CSS morto identificado (não usado em lugar nenhum, não mexi):** `.calendario-grid`,
+`.calendario-dia`, `.musica-tom`, `.dia-membros`, `.membro-item` — sobras de uma versão anterior
+da grade de escala (antes da migração pra formato planilha). Pode ser removido num cleanup futuro.
+
+`style.css?v=3`, `app.js?v=12`.
+
+---
+
+## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase
 2. Eu edito o código, aplico migrations direto no Supabase (quando aplicável) e gero um zip com
