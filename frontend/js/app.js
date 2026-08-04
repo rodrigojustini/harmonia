@@ -288,14 +288,14 @@ async function apiCall(endpoint, options = {}) {
 
     // ---- HISTÓRICO ----
     if (path === "/historico" && method === "GET") {
-      let q = supabase.from("historico").select("*").order("data", { ascending: false }).limit(200);
+      let q = supabase.from("historico").select("*, user:perfis(nome)").order("data", { ascending: false }).limit(200);
       if (params.get("userId")) q = q.eq("user_id", params.get("userId"));
       if (params.get("acao")) q = q.ilike("acao", `%${params.get("acao")}%`);
       if (params.get("dataInicio")) q = q.gte("data", params.get("dataInicio"));
       if (params.get("dataFim")) q = q.lte("data", params.get("dataFim"));
       const { data, error } = await q;
       if (error) throw error;
-      return data;
+      return data.map(h => ({ ...h, user: h.user ? { name: h.user.nome } : null }));
     }
 
     throw new Error(`Endpoint não mapeado: ${method} ${path}`);
@@ -2439,6 +2439,15 @@ async function initHistorico() {
   const btnFiltrarHistorico = document.getElementById("btnFiltrarHistorico");
   btnFiltrarHistorico?.addEventListener("click", carregarHistorico);
 
+  if (!perfisDaIgreja.length) {
+    await carregarPerfisDaIgreja();
+  }
+  const filtroUsuario = document.getElementById("filtroUsuario");
+  if (filtroUsuario) {
+    filtroUsuario.innerHTML = `<option value="">Todos os usuários</option>` +
+      perfisDaIgreja.map((p) => `<option value="${p.id}">${p.nome}</option>`).join("");
+  }
+
   await carregarHistorico();
 }
 
@@ -2510,14 +2519,20 @@ function getStatusTroca(status) {
 
 function getAcaoDescricao(acao) {
   const acoes = {
-    'escala_criada': 'Escala Criada',
-    'escala_aprovada': 'Escala Aprovada',
-    'troca_solicitada': 'Troca Solicitada',
-    'troca_aceita': 'Troca Aceita',
-    'troca_aprovada': 'Troca Aprovada',
-    'troca_recusada': 'Troca Recusada',
-    'musica_adicionada': 'Música Adicionada',
-    'musica_excluida': 'Música Excluída'
+    'escala_criada': 'Escala criada',
+    'escala_aprovada': 'Escala aprovada',
+    'escala_celula_definida': 'Pessoa escalada',
+    'escala_celula_removida': 'Vaga removida da escala',
+    'troca_solicitada': 'Troca solicitada',
+    'troca_aceita_receptor': 'Troca aceita',
+    'troca_aprovada': 'Troca aprovada',
+    'troca_recusada': 'Troca recusada',
+    'musica_adicionada': 'Música adicionada',
+    'musica_excluida': 'Música excluída',
+    'membro_criado': 'Membro cadastrado',
+    'membro_editado': 'Membro editado',
+    'membro_excluido': 'Membro excluído',
+    'culto_criado': 'Culto/mapa criado',
   };
   return acoes[acao] || acao;
 }

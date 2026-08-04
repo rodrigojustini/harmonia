@@ -392,6 +392,43 @@ repertório pessoal "ter" (2 cópias → 0) removidas direto no banco, sem preci
 
 ---
 
+## 17. Sessão 04/08/2026 (tarde) — Histórico automático de verdade (triggers no banco)
+
+Rodrigo decidiu que o Histórico vale a pena implementar de verdade, mesmo sem mostrar na
+apresentação de hoje — pra registrar de forma confiável quem fez o quê no ministério (evitar
+"disse que fez e não fez", recuperar contexto de coisa apagada).
+
+**Decisão de arquitetura:** em vez do frontend lembrar de chamar uma função de log toda vez
+(frágil — um lugar esquecido e o registro nunca existiu), usei **triggers no banco de dados**
+(`sql/013`). Toda vez que alguém cria, edita ou apaga um registro nas tabelas relevantes, o
+próprio Postgres grava a linha no histórico — não tem como escapar, nem editando direto pelo
+SQL Editor do Supabase.
+
+**O que passou a ser registrado automaticamente:**
+- Músicas: adicionada / excluída
+- Membros: cadastrado / editado / excluído
+- Escalas: criada / aprovada
+- Células da escala: pessoa escalada numa função/dia / vaga removida
+- Cultos: criado
+- Trocas de escala: solicitada / aceita / aprovada / recusada
+
+**Segurança:** a policy antiga do histórico (`isolamento igreja`, sem checar papel) foi
+substituída — agora é **só leitura** pra qualquer um da igreja, e a escrita só acontece pelas
+triggers (que rodam com privilégio elevado, ignorando RLS). Ninguém, nem membro nem líder,
+consegue editar ou apagar uma linha do histórico pelo app — é um registro à prova de adulteração,
+que é o ponto principal de ter um histórico.
+
+**Frontend:** a rota `/historico` do shim de API agora traz o nome de quem fez a ação (antes
+não vinha, aparecia sempre "Por: Usuário"); os filtros de Ação e Usuário foram atualizados/
+populados com os novos tipos de evento.
+
+Testado direto no banco: insert e delete de música geraram as duas linhas esperadas no
+histórico, com o formato certo. Registros de teste apagados depois.
+
+`app.js?v=15`.
+
+---
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase
