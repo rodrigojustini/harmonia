@@ -1956,12 +1956,15 @@ function renderizarPlanilha() {
       }
 
       let badgeConfirmacao = "";
-      if (celula && celula.membro_id) {
-        const membroDaCelula = membros.find((m) => m.id === celula.membro_id);
-        if (membroDaCelula && membroDaCelula.perfil_id === currentUser.id) {
+      if (celula && (celula.membro_id || (celula.nome_livre && celula.nome_livre.trim()))) {
+        const membroDaCelula = celula.membro_id ? membros.find((m) => m.id === celula.membro_id) : null;
+        const ehMinhaCelula = membroDaCelula && membroDaCelula.perfil_id === currentUser.id;
+
+        if (ehMinhaCelula || souLider) {
           const status = celula.status_confirmacao || "pendente";
           const icone = status === "confirmado" ? "✅" : "⏳";
-          badgeConfirmacao = ` <span class="badge-confirmacao" title="Clique pra confirmar sua presença" onclick="event.stopPropagation(); alternarConfirmacaoCelula('${celula.id}')">${icone}</span>`;
+          const titulo = ehMinhaCelula ? "Clique pra confirmar sua presença" : "Clique pra confirmar a presença dessa pessoa";
+          badgeConfirmacao = ` <span class="badge-confirmacao" title="${titulo}" onclick="event.stopPropagation(); alternarConfirmacaoCelula('${celula.id}')">${icone}</span>`;
         }
       }
 
@@ -2771,6 +2774,10 @@ function renderPalcoMusicaAtual() {
   const obsEl = document.getElementById("palcoObs");
   const indiceEl = document.getElementById("palcoIndice");
   const previewEl = document.getElementById("palcoProximaPreview");
+  const cifraWrap = document.getElementById("palcoCifraWrap");
+  const cifraTexto = document.getElementById("palcoCifraTexto");
+
+  pararAutoScrollPalco();
 
   if (!palcoMusicasOrdenadas.length) {
     tituloEl.textContent = "Nenhuma música no mapa deste culto";
@@ -2778,6 +2785,7 @@ function renderPalcoMusicaAtual() {
     obsEl.textContent = "";
     indiceEl.textContent = "— / —";
     previewEl.textContent = "";
+    cifraWrap.style.display = "none";
     return;
   }
 
@@ -2787,8 +2795,51 @@ function renderPalcoMusicaAtual() {
   tomEl.textContent = [m.tomOriginal ? `Tom: ${m.tomOriginal}` : null, m.bpm ? `${m.bpm} BPM` : null].filter(Boolean).join("  •  ");
   obsEl.textContent = m.observacoes || "";
 
+  if (m.cifra && m.cifra.trim()) {
+    cifraWrap.style.display = "block";
+    cifraTexto.textContent = m.cifra;
+    cifraTexto.scrollTop = 0;
+  } else {
+    cifraWrap.style.display = "none";
+  }
+
   const proxima = palcoMusicasOrdenadas[palcoIndiceAtual + 1];
   previewEl.textContent = proxima ? `Próxima: ${proxima.titulo}` : "Última música do mapa";
+}
+
+// ====== AUTO-ROLAGEM DA CIFRA NO MODO PALCO ======
+let palcoAutoScrollInterval = null;
+let palcoAutoScrollAtivo = false;
+
+function pararAutoScrollPalco() {
+  clearInterval(palcoAutoScrollInterval);
+  palcoAutoScrollAtivo = false;
+  const btn = document.getElementById("palcoAutoScrollBtn");
+  if (btn) btn.textContent = "▶ Auto-rolagem";
+}
+
+function iniciarAutoScrollPalco() {
+  const cifraEl = document.getElementById("palcoCifraTexto");
+  const velocidadeInput = document.getElementById("palcoScrollVelocidade");
+  const velocidade = Number(velocidadeInput.value) || 4;
+
+  clearInterval(palcoAutoScrollInterval);
+  palcoAutoScrollInterval = setInterval(() => {
+    cifraEl.scrollTop += velocidade * 0.6;
+    if (cifraEl.scrollTop + cifraEl.clientHeight >= cifraEl.scrollHeight - 2) {
+      pararAutoScrollPalco();
+    }
+  }, 50);
+  palcoAutoScrollAtivo = true;
+  document.getElementById("palcoAutoScrollBtn").textContent = "⏸ Pausar rolagem";
+}
+
+function alternarAutoScrollPalco() {
+  if (palcoAutoScrollAtivo) {
+    pararAutoScrollPalco();
+  } else {
+    iniciarAutoScrollPalco();
+  }
 }
 
 function formatarCronometro(seg) {
@@ -2809,6 +2860,15 @@ function initModoPalco() {
     if (palcoIndiceAtual < palcoMusicasOrdenadas.length - 1) {
       palcoIndiceAtual += 1;
       renderPalcoMusicaAtual();
+    }
+  });
+
+  document.getElementById("palcoAutoScrollBtn")?.addEventListener("click", alternarAutoScrollPalco);
+
+  // muda a velocidade em tempo real se a rolagem já estiver rodando
+  document.getElementById("palcoScrollVelocidade")?.addEventListener("input", () => {
+    if (palcoAutoScrollAtivo) {
+      iniciarAutoScrollPalco();
     }
   });
 

@@ -5,7 +5,7 @@
   <title>Harmonia - Ministério de Louvor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
-  <link rel="stylesheet" href="css/style.css?v=4" />
+  <link rel="stylesheet" href="css/style.css?v=5" />
   <script>
     (function () {
       var salvo = localStorage.getItem("harmonia_tema");
@@ -610,6 +610,17 @@
           <div class="palco-obs" id="palcoObs"></div>
         </div>
 
+        <div class="palco-cifra-wrap" id="palcoCifraWrap" style="display:none;">
+          <div class="palco-cifra-controles">
+            <button class="btn secondary small" id="palcoAutoScrollBtn">▶ Auto-rolagem</button>
+            <label class="palco-velocidade-label">
+              Velocidade
+              <input type="range" id="palcoScrollVelocidade" min="1" max="10" value="4" />
+            </label>
+          </div>
+          <pre class="palco-cifra" id="palcoCifraTexto"></pre>
+        </div>
+
         <div class="palco-nav">
           <button class="btn palco-btn-nav" id="palcoAnterior">‹ Anterior</button>
           <button class="btn palco-btn-nav" id="palcoProxima">Próxima ›</button>
@@ -629,6 +640,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="js/app.js?v=14"></script>
 </body>
 </html>

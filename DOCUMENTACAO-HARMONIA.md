@@ -307,6 +307,29 @@ por isso o nome/igreja/papel ficava espremido colado nas abas em telas menores.
 
 ---
 
+## 14. Sessão 04/08/2026 (tarde) — Líder confirma qualquer célula + cifra com auto-rolagem no Modo Palco
+
+**Líder/admin confirma presença por qualquer pessoa:**
+- O RPC `confirmar_presenca` (Fase 3) já permitia isso no banco — só faltava o botão aparecer.
+  Agora o selo ✅/⏳ aparece em **qualquer célula preenchida** (com conta vinculada ou nome
+  livre) quando quem está olhando é líder/admin, não só na própria célula
+- Isso também resolve o caso dos "8 pendentes" que eram nomes digitados soltos (sem conta) —
+  antes ninguém conseguia confirmar por eles, agora o líder consegue
+
+**Cifra com auto-rolagem no Modo Palco:**
+- O Modo Palco não mostrava a cifra até agora — só título, tom, BPM e observação. Adicionei um
+  painel de cifra (o texto cadastrado na música, sem transposição nessa tela — foco em
+  simplicidade durante o culto) com rolagem própria
+- Botão "▶ Auto-rolagem" liga/pausa uma rolagem automática; controle deslizante de velocidade
+  (1–10) ajustável em tempo real, mesmo com a rolagem já rodando
+- Rolagem para sozinha ao chegar no fim da cifra, e reseta pro topo sempre que troca de música
+  ou de culto
+- Música sem cifra cadastrada simplesmente não mostra o painel (não polui a tela à toa)
+
+`style.css?v=5`, `app.js?v=14`.
+
+---
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase

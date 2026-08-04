@@ -398,6 +398,53 @@ body {
   margin: 0 auto;
 }
 
+.palco-cifra-wrap {
+  width: min(90vw, 700px);
+  text-align: left;
+  background: #101010;
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.palco-cifra-controles {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.palco-velocidade-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #cfc5b8;
+}
+
+.palco-velocidade-label input[type="range"] {
+  width: 110px;
+}
+
+.palco-cifra {
+  max-height: 32vh;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: #e8dfd2;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+}
+
+.palco-cifra::-webkit-scrollbar {
+  width: 6px;
+}
+.palco-cifra::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
 .palco-nav {
   display: flex;
   gap: 1rem;
