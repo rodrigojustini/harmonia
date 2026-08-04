@@ -158,15 +158,15 @@ async function apiCall(endpoint, options = {}) {
     if (path === "/musicas" && method === "GET") {
       const { data, error } = await supabase.from("musicas").select("*").order("criado_em");
       if (error) throw error;
-      return data.map(m => ({ id: m.id, titulo: m.titulo, tomOriginal: m.tom_original, link: m.link, observacoes: m.observacoes }));
+      return data.map(m => ({ id: m.id, titulo: m.titulo, tomOriginal: m.tom_original, link: m.link, observacoes: m.observacoes, cifra: m.cifra }));
     }
     if (path === "/musicas" && method === "POST") {
       const { data, error } = await supabase.from("musicas").insert({
         igreja_id: currentUser.igreja.id, titulo: body.titulo, tom_original: body.tomOriginal,
-        link: body.link, observacoes: body.observacoes,
+        link: body.link, observacoes: body.observacoes, cifra: body.cifra,
       }).select().single();
       if (error) throw error;
-      return { id: data.id, titulo: data.titulo, tomOriginal: data.tom_original, link: data.link, observacoes: data.observacoes };
+      return { id: data.id, titulo: data.titulo, tomOriginal: data.tom_original, link: data.link, observacoes: data.observacoes, cifra: data.cifra };
     }
 
     // ---- MEMBROS ----
@@ -654,25 +654,23 @@ function initMusicas() {
     }
 
     try {
-      const novaMusica = await apiCall("/musicas", {
+      await apiCall("/musicas", {
         method: "POST",
         body: JSON.stringify({
           titulo,
           tomOriginal: tom,
           link,
           observacoes: obs,
+          cifra,
         }),
       });
 
-      // Adicionar cifra localmente (campo não existe no backend ainda)
-      novaMusica.cifra = cifra;
-      
       form.reset();
       await loadMusicas();
-      
-      alert("Música criada com sucesso!");
+
+      showNotification("Música criada com sucesso!", "success");
     } catch (error) {
-      alert("Erro ao criar música: " + error.message);
+      showNotification("Erro ao criar música: " + error.message, "error");
     }
   });
 }
