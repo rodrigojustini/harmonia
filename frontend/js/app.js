@@ -159,15 +159,15 @@ async function apiCall(endpoint, options = {}) {
     if (path === "/musicas" && method === "GET") {
       const { data, error } = await supabase.from("musicas").select("*").order("criado_em");
       if (error) throw error;
-      return data.map(m => ({ id: m.id, titulo: m.titulo, tomOriginal: m.tom_original, link: m.link, observacoes: m.observacoes, cifra: m.cifra }));
+      return data.map(m => ({ id: m.id, titulo: m.titulo, tomOriginal: m.tom_original, link: m.link, observacoes: m.observacoes, cifra: m.cifra, bpm: m.bpm }));
     }
     if (path === "/musicas" && method === "POST") {
       const { data, error } = await supabase.from("musicas").insert({
         igreja_id: currentUser.igreja.id, titulo: body.titulo, tom_original: body.tomOriginal,
-        link: body.link, observacoes: body.observacoes, cifra: body.cifra,
+        link: body.link, observacoes: body.observacoes, cifra: body.cifra, bpm: body.bpm,
       }).select().single();
       if (error) throw error;
-      return { id: data.id, titulo: data.titulo, tomOriginal: data.tom_original, link: data.link, observacoes: data.observacoes, cifra: data.cifra };
+      return { id: data.id, titulo: data.titulo, tomOriginal: data.tom_original, link: data.link, observacoes: data.observacoes, cifra: data.cifra, bpm: data.bpm };
     }
 
     // ---- MEMBROS ----
@@ -536,6 +536,12 @@ function initTabs() {
       if (tab === "aniversarios") {
         renderAniversariantes();
       }
+      if (tab === "dashboard") {
+        loadDashboard();
+      }
+      if (tab === "modopalco") {
+        popularSelectPalco();
+      }
     });
   });
 }
@@ -649,6 +655,7 @@ function initMusicas() {
 
     const titulo = document.getElementById("musicaTitulo").value.trim();
     const tom = document.getElementById("musicaTom").value.trim();
+    const bpm = document.getElementById("musicaBpm").value ? Number(document.getElementById("musicaBpm").value) : null;
     const link = document.getElementById("musicaLink").value.trim();
     const cifra = document.getElementById("musicaCifra").value;
     const obs = document.getElementById("musicaObs").value.trim();
@@ -664,6 +671,7 @@ function initMusicas() {
         body: JSON.stringify({
           titulo,
           tomOriginal: tom,
+          bpm,
           link,
           observacoes: obs,
           cifra,
@@ -1635,7 +1643,27 @@ async function requestWakeLock() {
   }
 }
 
+function aplicarTema(tema) {
+  if (tema === "sistema") {
+    localStorage.removeItem("harmonia_tema");
+    const sistemaClaro = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.setAttribute("data-theme", sistemaClaro ? "light" : "dark");
+  } else {
+    localStorage.setItem("harmonia_tema", tema);
+    document.documentElement.setAttribute("data-theme", tema);
+  }
+  document.querySelectorAll("#temaOpcoes [data-tema]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tema === tema);
+  });
+}
+
 function initConfig() {
+  const temaAtual = localStorage.getItem("harmonia_tema") || "sistema";
+  aplicarTema(temaAtual);
+  document.querySelectorAll("#temaOpcoes [data-tema]").forEach((btn) => {
+    btn.addEventListener("click", () => aplicarTema(btn.dataset.tema));
+  });
+
   const cardConvidar = document.getElementById("cardConvidarMembro");
   if (currentUser?.souLideranca) {
     cardConvidar.style.display = "block";
@@ -1728,6 +1756,8 @@ function initMainApp() {
   initMapaIndividual();
   initHistorico();
   initConfig();
+  loadDashboard();
+  initModoPalco();
 }
 
 // ====== SISTEMA DE ESCALA (formato planilha) ======
@@ -1871,6 +1901,21 @@ function nomeDaCelula(celula) {
   return membro ? membro.nome : "";
 }
 
+async function alternarConfirmacaoCelula(celulaId) {
+  const celula = escalaCelulas.find((c) => c.id === celulaId);
+  if (!celula) return;
+  const novoStatus = celula.status_confirmacao === "confirmado" ? "pendente" : "confirmado";
+  try {
+    const { error } = await supabase.rpc("confirmar_presenca", { p_celula_id: celulaId, p_status: novoStatus });
+    if (error) throw error;
+    celula.status_confirmacao = novoStatus;
+    renderizarPlanilha();
+    showNotification(novoStatus === "confirmado" ? "Presença confirmada! ✅" : "Confirmação removida.", "success");
+  } catch (error) {
+    showNotification("Erro ao confirmar presença: " + error.message, "error");
+  }
+}
+
 function renderizarPlanilha() {
   const container = document.getElementById("escalaCalendario");
   const souLider = currentUser?.souLideranca;
@@ -1912,7 +1957,18 @@ function renderizarPlanilha() {
       } else if (nome) {
         onclickAttr = `onclick="solicitarTrocaCelula('${celula.id}', '${col.nome.replace(/'/g, "\\'")}', '${nome.replace(/'/g, "\\'")}')"`;
       }
-      html += `<td class="celula-escala" ${onclickAttr}>${nome || (souLider ? '<span style="color:#555;">+ definir</span>' : "—")}</td>`;
+
+      let badgeConfirmacao = "";
+      if (celula && celula.membro_id) {
+        const membroDaCelula = membros.find((m) => m.id === celula.membro_id);
+        if (membroDaCelula && membroDaCelula.perfil_id === currentUser.id) {
+          const status = celula.status_confirmacao || "pendente";
+          const icone = status === "confirmado" ? "✅" : "⏳";
+          badgeConfirmacao = ` <span class="badge-confirmacao" title="Clique pra confirmar sua presença" onclick="event.stopPropagation(); alternarConfirmacaoCelula('${celula.id}')">${icone}</span>`;
+        }
+      }
+
+      html += `<td class="celula-escala" ${onclickAttr}>${nome ? nome + badgeConfirmacao : (souLider ? '<span style="color:#555;">+ definir</span>' : "—")}</td>`;
     });
 
     if (souLider) {
@@ -2594,6 +2650,191 @@ async function init() {
     console.error("❌ Erro na inicialização:", error);
     showNotification("Erro na inicialização do sistema", "error");
   }
+}
+
+// ====== DASHBOARD ======
+async function loadDashboard() {
+  const hoje = new Date();
+  const hojeStr = hoje.toISOString().slice(0, 10);
+
+  // Próximo culto / último culto
+  try {
+    const { data: proximos } = await supabase.from("cultos").select("*")
+      .gte("data", hojeStr).order("data", { ascending: true }).limit(1);
+    const el = document.querySelector("#dashProximoCulto .dash-card-corpo");
+    if (proximos && proximos.length) {
+      const c = proximos[0];
+      el.innerHTML = `<strong>${c.nome}</strong><br>${new Date(c.data + "T00:00:00").toLocaleDateString("pt-BR")}`;
+    } else {
+      el.textContent = "Nenhum culto agendado.";
+    }
+  } catch (e) { console.error(e); }
+
+  try {
+    const { data: ultimos } = await supabase.from("cultos").select("*")
+      .lt("data", hojeStr).order("data", { ascending: false }).limit(1);
+    const el = document.querySelector("#dashUltimoCulto .dash-card-corpo");
+    if (ultimos && ultimos.length) {
+      const c = ultimos[0];
+      el.innerHTML = `<strong>${c.nome}</strong><br>${new Date(c.data + "T00:00:00").toLocaleDateString("pt-BR")}`;
+    } else {
+      el.textContent = "Nenhum culto registrado ainda.";
+    }
+  } catch (e) { console.error(e); }
+
+  // Escala do mês + confirmados/pendentes/vagas
+  const mes = hoje.getMonth() + 1;
+  const ano = hoje.getFullYear();
+
+  try {
+    const { data: escalas } = await supabase.from("escalas").select("*").eq("mes", mes).eq("ano", ano);
+    const elEscala = document.querySelector("#dashEscalaMes .dash-card-corpo");
+    const elConf = document.querySelector("#dashConfirmados .dash-card-corpo");
+    const elPend = document.querySelector("#dashPendentes .dash-card-corpo");
+    const elVagas = document.querySelector("#dashVagas .dash-card-corpo");
+
+    if (!escalas || escalas.length === 0) {
+      elEscala.innerHTML = `${getMonthName(mes)}/${ano} — ainda não criada.`;
+      elConf.textContent = "—";
+      elPend.textContent = "—";
+      elVagas.textContent = "—";
+      return;
+    }
+
+    const escala = escalas[0];
+    elEscala.innerHTML = `${getMonthName(mes)}/${ano} — ${escala.aprovada ? "✅ aprovada" : "⏳ pendente de aprovação"}`;
+
+    const { data: celulas } = await supabase.from("escala_celulas").select("*").eq("escala_id", escala.id);
+    const preenchidas = (celulas || []).filter((c) => c.membro_id || (c.nome_livre && c.nome_livre.trim()));
+    const confirmados = preenchidas.filter((c) => c.status_confirmacao === "confirmado").length;
+    const pendentes = preenchidas.filter((c) => c.status_confirmacao !== "confirmado").length;
+    const vagas = (celulas || []).length - preenchidas.length;
+
+    elConf.textContent = String(confirmados);
+    elPend.textContent = String(pendentes);
+    elVagas.textContent = String(Math.max(vagas, 0));
+  } catch (e) {
+    console.error("Erro ao carregar dashboard:", e);
+  }
+}
+
+function abrirModoPalcoDoDashboard() {
+  document.querySelector('.tab-btn[data-tab="modopalco"]')?.click();
+}
+
+// ====== MODO PALCO ======
+let palcoCultoAtual = null;
+let palcoMusicasOrdenadas = [];
+let palcoIndiceAtual = 0;
+let palcoCronometroInterval = null;
+let palcoCronometroSegundos = 0;
+let palcoCronometroRodando = false;
+
+async function popularSelectPalco() {
+  const select = document.getElementById("palcoCultoSelect");
+  if (!select) return;
+
+  try {
+    const { data, error } = await supabase.from("cultos").select("*").order("data", { ascending: false }).limit(20);
+    if (error) throw error;
+
+    select.innerHTML = data.map((c) =>
+      `<option value="${c.id}">${c.nome} — ${new Date(c.data + "T00:00:00").toLocaleDateString("pt-BR")}</option>`
+    ).join("");
+
+    if (data.length) {
+      await carregarCultoNoPalco(data[0].id);
+    }
+
+    select.onchange = () => carregarCultoNoPalco(select.value);
+  } catch (e) {
+    console.error("Erro ao popular Modo Palco:", e);
+  }
+}
+
+async function carregarCultoNoPalco(cultoId) {
+  try {
+    const { data: culto, error } = await supabase.from("cultos")
+      .select("*, culto_musicas(musica_id, ordem)").eq("id", cultoId).single();
+    if (error) throw error;
+
+    palcoCultoAtual = culto;
+    const ordenadas = (culto.culto_musicas || []).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    palcoMusicasOrdenadas = ordenadas.map((cm) => musicas.find((m) => m.id === cm.musica_id)).filter(Boolean);
+    palcoIndiceAtual = 0;
+    renderPalcoMusicaAtual();
+  } catch (e) {
+    console.error("Erro ao carregar culto no palco:", e);
+  }
+}
+
+function renderPalcoMusicaAtual() {
+  const tituloEl = document.getElementById("palcoTitulo");
+  const tomEl = document.getElementById("palcoTom");
+  const obsEl = document.getElementById("palcoObs");
+  const indiceEl = document.getElementById("palcoIndice");
+  const previewEl = document.getElementById("palcoProximaPreview");
+
+  if (!palcoMusicasOrdenadas.length) {
+    tituloEl.textContent = "Nenhuma música no mapa deste culto";
+    tomEl.textContent = "";
+    obsEl.textContent = "";
+    indiceEl.textContent = "— / —";
+    previewEl.textContent = "";
+    return;
+  }
+
+  const m = palcoMusicasOrdenadas[palcoIndiceAtual];
+  indiceEl.textContent = `${palcoIndiceAtual + 1} / ${palcoMusicasOrdenadas.length}`;
+  tituloEl.textContent = m.titulo;
+  tomEl.textContent = [m.tomOriginal ? `Tom: ${m.tomOriginal}` : null, m.bpm ? `${m.bpm} BPM` : null].filter(Boolean).join("  •  ");
+  obsEl.textContent = m.observacoes || "";
+
+  const proxima = palcoMusicasOrdenadas[palcoIndiceAtual + 1];
+  previewEl.textContent = proxima ? `Próxima: ${proxima.titulo}` : "Última música do mapa";
+}
+
+function formatarCronometro(seg) {
+  const m = String(Math.floor(seg / 60)).padStart(2, "0");
+  const s = String(seg % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function initModoPalco() {
+  document.getElementById("palcoAnterior")?.addEventListener("click", () => {
+    if (palcoIndiceAtual > 0) {
+      palcoIndiceAtual -= 1;
+      renderPalcoMusicaAtual();
+    }
+  });
+
+  document.getElementById("palcoProxima")?.addEventListener("click", () => {
+    if (palcoIndiceAtual < palcoMusicasOrdenadas.length - 1) {
+      palcoIndiceAtual += 1;
+      renderPalcoMusicaAtual();
+    }
+  });
+
+  const btnCrono = document.getElementById("palcoCronometroBtn");
+  btnCrono?.addEventListener("click", () => {
+    if (palcoCronometroRodando) {
+      clearInterval(palcoCronometroInterval);
+      palcoCronometroRodando = false;
+    } else {
+      palcoCronometroInterval = setInterval(() => {
+        palcoCronometroSegundos += 1;
+        btnCrono.textContent = `⏱ ${formatarCronometro(palcoCronometroSegundos)}`;
+      }, 1000);
+      palcoCronometroRodando = true;
+    }
+  });
+
+  btnCrono?.addEventListener("dblclick", () => {
+    clearInterval(palcoCronometroInterval);
+    palcoCronometroRodando = false;
+    palcoCronometroSegundos = 0;
+    btnCrono.textContent = "⏱ 00:00";
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);

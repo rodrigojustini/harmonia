@@ -6,6 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
   <link rel="stylesheet" href="css/style.css" />
+  <script>
+    (function () {
+      var salvo = localStorage.getItem("harmonia_tema");
+      var tema = salvo || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", tema);
+    })();
+  </script>
 </head>
 <body>
   <header class="app-header">
@@ -18,7 +25,8 @@
     </div>
 
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="escala">📅 Escala</button>
+      <button class="tab-btn active" data-tab="dashboard">🏠 Início</button>
+      <button class="tab-btn" data-tab="escala">📅 Escala</button>
       <button class="tab-btn" data-tab="trocas">🔄 Trocas</button>
       <button class="tab-btn" data-tab="musicas">🎵 Músicas</button>
       <button class="tab-btn" data-tab="meurepertorio">🎼 Meu Repertório</button>
@@ -26,12 +34,54 @@
       <button class="tab-btn" data-tab="membros">👥 Membros</button>
       <button class="tab-btn" data-tab="historico">📋 Histórico</button>
       <button class="tab-btn" data-tab="config">⚙️ Config</button>
+      <button class="tab-btn" data-tab="modopalco">🎤 Modo Palco</button>
     </nav>
   </header>
 
   <main class="app-main">
     <!-- ESCALA MENSAL -->
-    <section id="escala" class="section active">
+    <!-- DASHBOARD / INÍCIO -->
+    <section id="dashboard" class="section active">
+      <div class="section-title">
+        <h2>Início</h2>
+        <p>Visão geral do ministério.</p>
+      </div>
+
+      <div class="dashboard-grid" id="dashboardGrid">
+        <div class="dash-card" id="dashProximoCulto">
+          <span class="dash-card-label">Próximo culto</span>
+          <div class="dash-card-corpo">Carregando...</div>
+        </div>
+        <div class="dash-card" id="dashUltimoCulto">
+          <span class="dash-card-label">Último culto</span>
+          <div class="dash-card-corpo">Carregando...</div>
+        </div>
+        <div class="dash-card" id="dashEscalaMes">
+          <span class="dash-card-label">Escala do mês</span>
+          <div class="dash-card-corpo">Carregando...</div>
+        </div>
+        <div class="dash-card" id="dashConfirmados">
+          <span class="dash-card-label">Confirmados</span>
+          <div class="dash-card-corpo dash-numero">—</div>
+        </div>
+        <div class="dash-card" id="dashPendentes">
+          <span class="dash-card-label">Pendentes</span>
+          <div class="dash-card-corpo dash-numero">—</div>
+        </div>
+        <div class="dash-card" id="dashVagas">
+          <span class="dash-card-label">Vagas em aberto</span>
+          <div class="dash-card-corpo dash-numero">—</div>
+        </div>
+        <div class="dash-card dash-card-acao" id="dashModoPalco">
+          <span class="dash-card-label">Culto hoje?</span>
+          <div class="dash-card-corpo">
+            <button class="btn primary" onclick="abrirModoPalcoDoDashboard()">🎤 Abrir Modo Palco</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="escala" class="section">
       <div class="section-title">
         <h2>Escala Mensal</h2>
         <p>Visualize e gerencie a escala de ministério do mês.</p>
@@ -171,6 +221,10 @@
             <div class="field-group">
               <label for="musicaTom">Tom original</label>
               <input id="musicaTom" type="text" placeholder="Ex: G, A, F#..." />
+            </div>
+            <div class="field-group">
+              <label for="musicaBpm">BPM (opcional, usado no Modo Palco)</label>
+              <input id="musicaBpm" type="number" min="30" max="300" placeholder="Ex: 90" />
             </div>
             <div class="field-group">
               <label for="musicaLink">Link (YouTube / Cifra)</label>
@@ -516,6 +570,16 @@
       </div>
 
       <div class="card">
+        <h3>Aparência</h3>
+        <p><small>Escolha claro, escuro, ou siga o sistema do seu aparelho.</small></p>
+        <div class="tema-opcoes" id="temaOpcoes">
+          <button type="button" class="btn secondary" data-tema="dark">🌙 Escuro</button>
+          <button type="button" class="btn secondary" data-tema="light">☀️ Claro</button>
+          <button type="button" class="btn secondary" data-tema="sistema">🖥️ Sistema</button>
+        </div>
+      </div>
+
+      <div class="card">
         <h3>Tela ligada</h3>
         <p>
           Ative para tentar manter a tela do dispositivo ligada durante o culto.<br />
@@ -530,6 +594,30 @@
         <p><small>Use com cuidado – isso apaga músicas, membros e cultos salvos neste dispositivo.</small></p>
       </div>
     </section>
+
+    <!-- MODO PALCO: tela grande, sem menus, sem distrações -->
+    <section id="modopalco" class="section">
+      <div class="palco-tela">
+        <div class="palco-topo">
+          <select id="palcoCultoSelect"></select>
+          <button class="btn secondary small" id="palcoCronometroBtn">⏱ 00:00</button>
+        </div>
+
+        <div class="palco-musica-atual">
+          <div class="palco-numero" id="palcoIndice">— / —</div>
+          <h1 id="palcoTitulo">Selecione um culto</h1>
+          <div class="palco-tom" id="palcoTom"></div>
+          <div class="palco-obs" id="palcoObs"></div>
+        </div>
+
+        <div class="palco-nav">
+          <button class="btn palco-btn-nav" id="palcoAnterior">‹ Anterior</button>
+          <button class="btn palco-btn-nav" id="palcoProxima">Próxima ›</button>
+        </div>
+
+        <div class="palco-proxima-preview" id="palcoProximaPreview"></div>
+      </div>
+    </section>
   </main>
 
   <footer class="app-footer">
@@ -541,6 +629,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=10"></script>
+  <script src="js/app.js?v=11"></script>
 </body>
 </html>

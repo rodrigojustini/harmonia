@@ -6,6 +6,24 @@
   --cinza-escuro: #2a2226; /* cards */
   --cinza-claro: #3a2f34;
   --branco: #f2e9dc;       /* areia clara, não branco puro */
+  --bg-grad-1: #3a2a30;
+  --bg-grad-2: #211a1f;
+  --bg-grad-3: #16111a;
+  --cor-borda-sutil: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="light"] {
+  --verde: #b8863a;
+  --verde-escuro: #96692b;
+  --vinho: #6b3346;
+  --preto: #f7f1e8;
+  --cinza-escuro: #ffffff;
+  --cinza-claro: #ece2d3;
+  --branco: #2a2226;
+  --bg-grad-1: #fdf6ec;
+  --bg-grad-2: #f4ead9;
+  --bg-grad-3: #ecdec8;
+  --cor-borda-sutil: rgba(43, 34, 30, 0.08);
 }
 
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
@@ -26,11 +44,12 @@ h1, h2, h3, h4, .brand h1, .card h3, .card h4 {
 }
 
 body {
-  background: radial-gradient(circle at top, #3a2a30 0, #211a1f 50%, #16111a 100%);
+  background: radial-gradient(circle at top, var(--bg-grad-1) 0, var(--bg-grad-2) 50%, var(--bg-grad-3) 100%);
   color: var(--branco);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
 /* Header */
@@ -198,6 +217,145 @@ body {
 .membro-card-acoes .btn {
   padding: 0.3rem 0.6rem;
   font-size: 0.72rem;
+}
+
+.tema-opcoes {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.tema-opcoes .btn.active {
+  background: var(--verde);
+  color: var(--preto);
+  font-weight: 700;
+}
+
+/* ====== DASHBOARD ====== */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.dash-card {
+  background: var(--cinza-escuro);
+  border: 1px solid var(--cor-borda-sutil);
+  border-radius: 1rem;
+  padding: 1.1rem;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 100px;
+}
+
+.dash-card-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--verde);
+  font-weight: 600;
+}
+
+.dash-card-corpo {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.dash-numero {
+  font-size: 2.1rem;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 700;
+}
+
+.dash-card-acao {
+  justify-content: center;
+  align-items: flex-start;
+  background: linear-gradient(135deg, rgba(212, 162, 76, 0.12), transparent);
+}
+
+/* ====== MODO PALCO ====== */
+.palco-tela {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1.5rem;
+  padding: 1rem;
+}
+
+.palco-topo {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.palco-topo select {
+  max-width: 220px;
+}
+
+.palco-musica-atual { max-width: 90vw; }
+
+.palco-numero {
+  font-size: 1rem;
+  color: var(--verde);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.palco-musica-atual h1 {
+  font-size: clamp(2rem, 8vw, 4.5rem);
+  line-height: 1.1;
+  margin-bottom: 0.8rem;
+}
+
+.palco-tom {
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  color: var(--verde);
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
+.palco-obs {
+  font-size: 1.1rem;
+  color: var(--branco);
+  opacity: 0.85;
+  white-space: pre-wrap;
+  max-width: 60ch;
+  margin: 0 auto;
+}
+
+.palco-nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.palco-btn-nav {
+  font-size: 1.2rem;
+  padding: 1rem 2rem;
+  border-radius: 1rem;
+}
+
+.palco-proxima-preview {
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+@media (max-width: 640px) {
+  .palco-topo { position: static; transform: none; margin-bottom: 1rem; }
+  .palco-btn-nav { padding: 0.8rem 1.2rem; font-size: 1rem; }
+}
+
+.badge-confirmacao {
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-left: 0.15rem;
 }
 
 .footer-credito {

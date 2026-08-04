@@ -213,7 +213,43 @@ arquivo `frontend/js/app.js`) se a mudança realmente está lá, antes de testar
 
 ---
 
-## 9. Workflow padrão (repetindo o que já vale)
+## 11. Sessão 04/08/2026 (tarde) — Fase 3: dashboard, tema claro/escuro, Modo Palco
+
+**Banco (já aplicado em produção via Supabase MCP — `sql/012`):**
+- `escala_celulas.status_confirmacao` (`pendente` / `confirmado` / `recusado`)
+- `musicas.bpm` (opcional, alimenta o Modo Palco)
+- RPC `confirmar_presenca(p_celula_id, p_status)` — o próprio músico confirma/desmarca a
+  própria célula da escala; líder/admin também podem. Ninguém mais consegue mexer na
+  confirmação de outra pessoa
+
+**Frontend:**
+- **Tema claro/escuro** — variáveis CSS reorganizadas em `:root`/`[data-theme="light"]`, seletor
+  em Config (Escuro/Claro/Sistema), aplica antes do primeiro paint (script inline no `<head>`)
+  pra não piscar, salva em `localStorage("harmonia_tema")`. Blocos de código/cifra continuam
+  escuros nos dois temas (igual editor de código) — decisão deliberada, não bug
+- **Dashboard ("🏠 Início")** virou a aba padrão (Escala passou pra segunda). Cards com dado
+  real, sem número inventado: Próximo culto, Último culto, Escala do mês (aprovada/pendente),
+  Confirmados, Pendentes, Vagas em aberto, atalho "Abrir Modo Palco"
+- **Confirmação de presença** — badge ✅/⏳ clicável na própria célula da grade de Escala
+  (só aparece na célula que é sua). É o que alimenta os contadores do dashboard
+- **Modo Palco ("🎤")** — tela cheia sem menu, dropdown pra escolher o culto, navega música por
+  música do mapa oficial (Anterior/Próxima), mostra tom + BPM + observações da música,
+  cronômetro simples (clique inicia/pausa, duplo-clique zera)
+- `app.js?v=11`
+
+**Pendências reais que ficaram de fora (documentando pra não esquecer):**
+- Limpeza automática de escalas antigas no início do mês — não entrou nesta fase
+- Estrutura preparatória pra IA (sugestão de música/escala) — não entrou
+- Loading elegante / skeletons / animações de transição entre abas — o app ainda usa
+  `alert()`/notificação simples em alguns fluxos antigos (trocas, algumas ações de escala);
+  o padrão novo (`showNotification`) já está em uso nas telas mais recentes, mas não foi
+  retroaplicado em tudo
+- "Instrumentos faltando" no dashboard hoje é genérico ("vagas em aberto" = células sem
+  ninguém atribuído); não cruza com o cadastro de instrumentos de cada membro ainda
+
+---
+
+
 
 1. Você pede a próxima fase
 2. Eu edito o código, aplico migrations direto no Supabase (quando aplicável) e gero um zip com
