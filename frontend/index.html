@@ -21,6 +21,7 @@
       <button class="tab-btn active" data-tab="escala">📅 Escala</button>
       <button class="tab-btn" data-tab="trocas">🔄 Trocas</button>
       <button class="tab-btn" data-tab="musicas">🎵 Músicas</button>
+      <button class="tab-btn" data-tab="meurepertorio">🎼 Meu Repertório</button>
       <button class="tab-btn" data-tab="cultos">⛪ Cultos</button>
       <button class="tab-btn" data-tab="membros">👥 Membros</button>
       <button class="tab-btn" data-tab="historico">📋 Histórico</button>
@@ -160,7 +161,7 @@
       </div>
 
       <div class="grid-2">
-        <div class="card">
+        <div class="card" id="cardNovaMusica">
           <h3>Nova música</h3>
           <form id="formMusica">
             <div class="field-group">
@@ -200,6 +201,58 @@
       </div>
     </section>
 
+    <!-- MEU REPERTÓRIO (biblioteca particular do vocalista/músico) -->
+    <section id="meurepertorio" class="section">
+      <div class="section-title">
+        <h2>Meu Repertório</h2>
+        <p>Sua biblioteca particular de músicas — só você vê e edita.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 id="tituloFormRepertorio">Nova música no meu repertório</h3>
+          <form id="formRepertorioPessoal">
+            <input type="hidden" id="repertorioEditandoId" value="" />
+            <div class="field-group">
+              <label for="repertorioTitulo">Título</label>
+              <input id="repertorioTitulo" type="text" required />
+            </div>
+            <div class="field-group">
+              <label for="repertorioTom">Tom original</label>
+              <input id="repertorioTom" type="text" placeholder="Ex: G, A, F#..." />
+            </div>
+            <div class="field-group">
+              <label for="repertorioLink">Link (YouTube / Cifra)</label>
+              <input id="repertorioLink" type="url" placeholder="https://..." />
+            </div>
+            <div class="field-group">
+              <label for="repertorioCifra">Cifra / acordes (opcional)</label>
+              <textarea id="repertorioCifra" rows="4" placeholder="Ex: G  D  Em  C&#10;C  D  G  Em"></textarea>
+            </div>
+            <div class="field-group">
+              <label for="repertorioObs">Observações</label>
+              <textarea id="repertorioObs" rows="2"></textarea>
+            </div>
+            <div class="modal-actions" style="justify-content:flex-start; gap:0.5rem;">
+              <button class="btn primary" type="submit" id="btnSalvarRepertorio">Salvar na minha biblioteca</button>
+              <button class="btn secondary" type="button" id="btnCancelarEdicaoRepertorio" style="display:none;">Cancelar edição</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Minhas músicas</h3>
+          <input id="repertorioBusca" type="text" placeholder="Pesquisar por título ou tom..." style="margin-bottom:0.6rem;" />
+          <div id="listaRepertorioPessoal" class="list"></div>
+        </div>
+      </div>
+
+      <div class="card" id="repertorioDetalhesCard" style="display:none;">
+        <h3>Mapa da música</h3>
+        <div id="repertorioDetalhes"></div>
+      </div>
+    </section>
+
     <!-- CULTOS / MAPAS -->
     <section id="cultos" class="section">
       <div class="section-title">
@@ -208,7 +261,7 @@
       </div>
 
       <div class="grid-2">
-        <div class="card">
+        <div class="card" id="cardNovoCulto">
           <h3>Novo culto</h3>
           <form id="formCulto">
             <div class="field-group">
@@ -237,6 +290,21 @@
       <div class="card" id="cultoDetalhesCard" style="display:none;">
         <h3>Detalhes do culto</h3>
         <div id="cultoDetalhes"></div>
+      </div>
+
+      <div class="card" id="mapaIndividualCard" style="display:none;">
+        <h3>Meu Mapa (pessoal)</h3>
+        <p><small>Suas anotações particulares pra esse culto — pedais, entradas, viradas, respiração... Só você vê. O mapa oficial acima nunca é alterado por aqui.</small></p>
+        <div class="field-group">
+          <label for="mapaIndividualInstrumento">Meu instrumento</label>
+          <input id="mapaIndividualInstrumento" type="text" placeholder="Ex: Guitarra, Teclado, Bateria, Backing..." />
+        </div>
+        <div class="field-group">
+          <label for="mapaIndividualConteudo">Minhas anotações</label>
+          <textarea id="mapaIndividualConteudo" rows="8" placeholder="Ex:&#10;Verso: pad suave&#10;Refrão: entra guitarra distorcida&#10;Ponte: troca pra violão&#10;Solo: eu"></textarea>
+        </div>
+        <button class="btn primary" id="btnSalvarMapaIndividual">Salvar meu mapa</button>
+        <span id="mapaIndividualStatus" style="font-size:0.75rem; color:#8fd18f; margin-left:0.6rem;"></span>
       </div>
     </section>
 
@@ -473,6 +541,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=9"></script>
+  <script src="js/app.js?v=10"></script>
 </body>
 </html>

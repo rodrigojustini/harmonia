@@ -640,6 +640,9 @@ async function loadMusicas() {
 function initMusicas() {
   loadMusicas();
 
+  const cardNova = document.getElementById("cardNovaMusica");
+  if (cardNova) cardNova.style.display = currentUser?.souLideranca ? "block" : "none";
+
   const form = document.getElementById("formMusica");
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -826,7 +829,216 @@ function mostrarMapaMusica(musica) {
   card.style.display = "block";
 }
 
-// ====== MEMBROS COM API (perfil completo estilo rede social) ======
+// ====== MEU REPERTÓRIO (biblioteca particular, vinculada ao dono) ======
+let repertorioPessoal = [];
+let filtroRepertorioTexto = "";
+
+async function loadRepertorioPessoal() {
+  try {
+    const { data, error } = await supabase.from("repertorio_pessoal")
+      .select("*").eq("perfil_id", currentUser.id).order("titulo");
+    if (error) throw error;
+    repertorioPessoal = data;
+    renderRepertorioPessoal();
+  } catch (error) {
+    console.error("Erro ao carregar repertório pessoal:", error);
+  }
+}
+
+function limparFormRepertorio() {
+  const form = document.getElementById("formRepertorioPessoal");
+  form.reset();
+  document.getElementById("repertorioEditandoId").value = "";
+  document.getElementById("tituloFormRepertorio").textContent = "Nova música no meu repertório";
+  document.getElementById("btnSalvarRepertorio").textContent = "Salvar na minha biblioteca";
+  document.getElementById("btnCancelarEdicaoRepertorio").style.display = "none";
+}
+
+function initMeuRepertorio() {
+  loadRepertorioPessoal();
+
+  document.getElementById("btnCancelarEdicaoRepertorio").addEventListener("click", limparFormRepertorio);
+
+  document.getElementById("repertorioBusca").addEventListener("input", (e) => {
+    filtroRepertorioTexto = e.target.value.trim().toLowerCase();
+    renderRepertorioPessoal();
+  });
+
+  const form = document.getElementById("formRepertorioPessoal");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const editandoId = document.getElementById("repertorioEditandoId").value || null;
+    const titulo = document.getElementById("repertorioTitulo").value.trim();
+    const tom = document.getElementById("repertorioTom").value.trim();
+    const link = document.getElementById("repertorioLink").value.trim();
+    const cifra = document.getElementById("repertorioCifra").value;
+    const obs = document.getElementById("repertorioObs").value.trim();
+
+    if (!titulo) {
+      alert("Informe o título da música.");
+      return;
+    }
+
+    const payload = { titulo, tom_original: tom || null, link: link || null, cifra: cifra || null, observacoes: obs || null };
+
+    try {
+      if (editandoId) {
+        const { error } = await supabase.from("repertorio_pessoal")
+          .update({ ...payload, atualizado_em: new Date().toISOString() }).eq("id", editandoId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("repertorio_pessoal")
+          .insert({ igreja_id: currentUser.igreja.id, perfil_id: currentUser.id, ...payload });
+        if (error) throw error;
+      }
+
+      limparFormRepertorio();
+      await loadRepertorioPessoal();
+      showNotification(editandoId ? "Música atualizada!" : "Adicionada ao seu repertório!", "success");
+    } catch (error) {
+      showNotification("Erro ao salvar: " + error.message, "error");
+    }
+  });
+}
+
+function renderRepertorioPessoal() {
+  const listaEl = document.getElementById("listaRepertorioPessoal");
+  listaEl.innerHTML = "";
+
+  const filtradas = repertorioPessoal.filter((m) => {
+    if (!filtroRepertorioTexto) return true;
+    return m.titulo.toLowerCase().includes(filtroRepertorioTexto) ||
+      (m.tom_original || "").toLowerCase().includes(filtroRepertorioTexto);
+  });
+
+  if (filtradas.length === 0) {
+    listaEl.innerHTML = repertorioPessoal.length === 0
+      ? "<p style='font-size:0.85rem;color:#bbb;'>Sua biblioteca está vazia. Adicione a primeira música ao lado.</p>"
+      : "<p style='font-size:0.85rem;color:#bbb;'>Nenhuma música encontrada pra essa busca.</p>";
+    return;
+  }
+
+  filtradas
+    .slice()
+    .sort((a, b) => a.titulo.localeCompare(b.titulo))
+    .forEach((m) => {
+      const item = document.createElement("div");
+      item.className = "list-item";
+
+      const main = document.createElement("div");
+      main.className = "list-item-main";
+      main.innerHTML = `
+        <strong>${m.titulo}</strong>
+        <span>Tom: ${m.tom_original || "-"}</span>
+        ${m.link ? `<a href="${m.link}" target="_blank" style="font-size:0.75rem;color:#2ecc71;">Abrir link</a>` : ""}
+      `;
+
+      const acoes = document.createElement("div");
+      acoes.style.display = "flex";
+      acoes.style.gap = "0.3rem";
+      acoes.style.flexWrap = "wrap";
+
+      const btnMapa = document.createElement("button");
+      btnMapa.className = "btn primary small";
+      btnMapa.textContent = "Mapa";
+      btnMapa.addEventListener("click", (e) => { e.stopPropagation(); mostrarMapaRepertorioPessoal(m); });
+
+      const btnEditar = document.createElement("button");
+      btnEditar.className = "btn secondary small";
+      btnEditar.textContent = "Editar";
+      btnEditar.addEventListener("click", (e) => {
+        e.stopPropagation();
+        document.getElementById("repertorioEditandoId").value = m.id;
+        document.getElementById("repertorioTitulo").value = m.titulo;
+        document.getElementById("repertorioTom").value = m.tom_original || "";
+        document.getElementById("repertorioLink").value = m.link || "";
+        document.getElementById("repertorioCifra").value = m.cifra || "";
+        document.getElementById("repertorioObs").value = m.observacoes || "";
+        document.getElementById("tituloFormRepertorio").textContent = "Editar música";
+        document.getElementById("btnSalvarRepertorio").textContent = "Salvar alterações";
+        document.getElementById("btnCancelarEdicaoRepertorio").style.display = "inline-block";
+        document.getElementById("formRepertorioPessoal").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      const btnExcluir = document.createElement("button");
+      btnExcluir.className = "btn danger small";
+      btnExcluir.textContent = "Excluir";
+      btnExcluir.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Excluir "${m.titulo}" do seu repertório?`)) return;
+        try {
+          const { error } = await supabase.from("repertorio_pessoal").delete().eq("id", m.id);
+          if (error) throw error;
+          await loadRepertorioPessoal();
+          showNotification("Música removida.", "success");
+        } catch (error) {
+          showNotification("Erro ao excluir: " + error.message, "error");
+        }
+      });
+
+      acoes.appendChild(btnMapa);
+      acoes.appendChild(btnEditar);
+      acoes.appendChild(btnExcluir);
+
+      item.appendChild(main);
+      item.appendChild(acoes);
+      listaEl.appendChild(item);
+    });
+}
+
+function mostrarMapaRepertorioPessoal(musica) {
+  const card = document.getElementById("repertorioDetalhesCard");
+  const el = document.getElementById("repertorioDetalhes");
+  if (!card || !el) return;
+
+  const tomOriginal = musica.tom_original ? musica.tom_original.toUpperCase() : null;
+  let offset = 0;
+
+  function calcularTomAtual() {
+    return tomOriginal ? transporNota(tomOriginal, offset) : "-";
+  }
+
+  function renderConteudo() {
+    const cifraTransposta = transporTextoCifra(musica.cifra || "", offset);
+    el.innerHTML = `
+      <p><strong>${musica.titulo}</strong></p>
+      <p>Tom original: ${tomOriginal || "-"}</p>
+      <div style="margin:0.5rem 0;">
+        <button id="repDiminuirTom" class="btn small" style="margin-right:0.4rem;">-</button>
+        Tom atual: <span id="repTomAtual">${calcularTomAtual()}</span>
+        <button id="repAumentarTom" class="btn small" style="margin-left:0.4rem;">+</button>
+      </div>
+      ${musica.link ? `<p style="margin-top:0.6rem;"><a href="${musica.link}" target="_blank" style="color:#2ecc71;">Abrir link</a></p>` : ""}
+      ${cifraTransposta ? `<p style="margin-top:0.6rem;"><strong>Cifra transposta:</strong></p>
+        <pre style="background:#101010;padding:0.6rem;border-radius:0.5rem;white-space:pre-wrap;font-size:0.8rem;">${cifraTransposta}</pre>` : ""}
+      <p style="margin-top:0.6rem;"><strong>Observações:</strong></p>
+      <p>${musica.observacoes || "Nenhuma observação cadastrada."}</p>
+    `;
+
+    const btnMenos = el.querySelector("#repDiminuirTom");
+    const btnMais = el.querySelector("#repAumentarTom");
+    const tomAtualSpan = el.querySelector("#repTomAtual");
+
+    btnMenos?.addEventListener("click", () => {
+      offset -= 1;
+      tomAtualSpan.textContent = calcularTomAtual();
+      const pre = el.querySelector("pre");
+      if (pre) pre.textContent = transporTextoCifra(musica.cifra || "", offset);
+    });
+    btnMais?.addEventListener("click", () => {
+      offset += 1;
+      tomAtualSpan.textContent = calcularTomAtual();
+      const pre = el.querySelector("pre");
+      if (pre) pre.textContent = transporTextoCifra(musica.cifra || "", offset);
+    });
+  }
+
+  renderConteudo();
+  card.style.display = "block";
+}
+
+
 let perfisDaIgreja = [];
 let avatarSelecionado = null; // File escolhido no input, aguardando upload
 
@@ -1203,6 +1415,9 @@ async function loadCultos() {
 function initCultos() {
   loadCultos();
 
+  const cardNovo = document.getElementById("cardNovoCulto");
+  if (cardNovo) cardNovo.style.display = currentUser?.souLideranca ? "block" : "none";
+
   const form = document.getElementById("formCulto");
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -1273,8 +1488,8 @@ function renderCultos() {
       const main = document.createElement("div");
       main.className = "list-item-main";
       
-      // Verificar se é estrutura do backend (com musicas array) ou local (com musicas.length)
-      const qtdMusicas = c.musicas ? (Array.isArray(c.musicas) ? c.musicas.length : 0) : 0;
+      // culto.musicaIds vem do shim de API (ver apiCall "/cultos" GET)
+      const qtdMusicas = Array.isArray(c.musicaIds) ? c.musicaIds.length : 0;
       
       main.innerHTML = `
         <strong>${c.nome}</strong>
@@ -1312,17 +1527,20 @@ function mostrarDetalhesCulto(culto) {
   `;
 
   // Verificar estrutura do culto (backend vs local)
-  if (culto.musicas && Array.isArray(culto.musicas)) {
+  if (Array.isArray(culto.musicaIds) && culto.musicaIds.length) {
+    culto.musicaIds.forEach((mid) => {
+      const mus = musicas.find((x) => x.id === mid);
+      if (mus) {
+        html += `<li>${mus.titulo} (${mus.tomOriginal || "-"})</li>`;
+      }
+    });
+  } else if (culto.musicas && Array.isArray(culto.musicas)) {
     culto.musicas.forEach((mItem) => {
-      // Estrutura do backend: mItem.musica
       if (mItem.musica) {
         html += `<li>${mItem.musica.titulo} (${mItem.musica.tomOriginal || "-"})</li>`;
       } else {
-        // Estrutura local: buscar música por ID
         const mus = musicas.find((x) => x.id === mItem.musicaId);
-        if (mus) {
-          html += `<li>${mus.titulo} (${mus.tomOriginal || "-"})</li>`;
-        }
+        if (mus) html += `<li>${mus.titulo} (${mus.tomOriginal || "-"})</li>`;
       }
     });
   }
@@ -1340,6 +1558,61 @@ function mostrarDetalhesCulto(culto) {
   }
 
   el.innerHTML = html;
+
+  carregarMapaIndividual(culto.id);
+}
+
+// ====== MAPA INDIVIDUAL (anotações pessoais por culto — nunca altera o mapa oficial) ======
+let cultoAtualParaMapaIndividual = null;
+
+async function carregarMapaIndividual(cultoId) {
+  cultoAtualParaMapaIndividual = cultoId;
+  const card = document.getElementById("mapaIndividualCard");
+  const statusEl = document.getElementById("mapaIndividualStatus");
+  if (!card) return;
+  card.style.display = "block";
+  statusEl.textContent = "";
+
+  try {
+    const { data, error } = await supabase.from("mapas_individuais")
+      .select("*").eq("culto_id", cultoId).eq("perfil_id", currentUser.id).maybeSingle();
+    if (error) throw error;
+
+    document.getElementById("mapaIndividualInstrumento").value = data?.instrumento || currentUser.funcao || "";
+    document.getElementById("mapaIndividualConteudo").value = data?.conteudo || "";
+  } catch (error) {
+    console.error("Erro ao carregar mapa individual:", error);
+  }
+}
+
+function initMapaIndividual() {
+  const btn = document.getElementById("btnSalvarMapaIndividual");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    if (!cultoAtualParaMapaIndividual) return;
+
+    const instrumento = document.getElementById("mapaIndividualInstrumento").value.trim() || null;
+    const conteudo = document.getElementById("mapaIndividualConteudo").value;
+    const statusEl = document.getElementById("mapaIndividualStatus");
+
+    try {
+      const { error } = await supabase.from("mapas_individuais")
+        .upsert({
+          igreja_id: currentUser.igreja.id,
+          culto_id: cultoAtualParaMapaIndividual,
+          perfil_id: currentUser.id,
+          instrumento, conteudo,
+          atualizado_em: new Date().toISOString(),
+        }, { onConflict: "culto_id,perfil_id" });
+      if (error) throw error;
+
+      statusEl.textContent = "Salvo ✓";
+      setTimeout(() => { statusEl.textContent = ""; }, 2500);
+    } catch (error) {
+      showNotification("Erro ao salvar mapa individual: " + error.message, "error");
+    }
+  });
 }
 
 // ====== CONFIG: WAKE LOCK + RESET ======
@@ -1449,8 +1722,10 @@ function initMainApp() {
   initEscala();
   initTrocas();
   initMusicas();
+  initMeuRepertorio();
   initMembros();
   initCultos();
+  initMapaIndividual();
   initHistorico();
   initConfig();
 }

@@ -182,6 +182,37 @@ arquivo `frontend/js/app.js`) se a mudança realmente está lá, antes de testar
 
 ---
 
+## 10. Sessão 04/08/2026 (tarde) — Fase 2: repertório pessoal + mapa individual
+
+**Banco (já aplicado em produção via Supabase MCP — `sql/011`):**
+- Mesma correção de RLS da Fase 1, agora em `musicas`, `cultos` e `culto_musicas`: escrita só
+  líder/admin, leitura aberta pra igreja (antes qualquer membro editava o repertório oficial)
+- Tabela nova `repertorio_pessoal` — biblioteca particular, uma linha por música, vinculada a
+  `perfil_id`. RLS: só o dono vê e edita a própria (nem líder nem admin têm acesso)
+- Tabela nova `mapas_individuais` — anotações pessoais por culto (`culto_id` + `perfil_id`
+  únicos). RLS: só o dono. Nunca escreve em `culto_musicas` (mapa oficial)
+
+**Frontend:**
+- Aba nova "🎼 Meu Repertório": CRUD completo (criar/editar/excluir/pesquisar), reaproveita o
+  motor de transposição de cifra já existente
+- Dentro de Cultos → ao abrir um culto, aparece o card "Meu Mapa (pessoal)": campo de
+  instrumento + anotações livres, salva com upsert por `(culto_id, perfil_id)`
+- **Bug corrigido de brinde:** a lista/contagem de músicas do mapa oficial nunca aparecia
+  (o código lia `culto.musicas`, mas o shim da API sempre devolvia `culto.musicaIds`) — corrigido
+  em `renderCultos` e `mostrarDetalhesCulto`
+- Formulários de "Nova música" (repertório oficial) e "Novo culto" agora somem da tela pra quem
+  não é líder/admin, coerente com a RLS
+- `app.js?v=10`
+
+**Pendente pra próxima sessão:**
+- Fase 3: Dashboard novo (estilo Notion/Spotify), tema claro/escuro, Modo Palco
+- Limpeza automática de escalas antigas no início do mês
+- Estrutura preparatória pra IA (sem integrar ainda)
+- Mapa individual hoje é texto livre por culto inteiro; se quiser granularidade por música
+  dentro do culto (um mapa por instrumento por música), dá pra evoluir depois
+
+---
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase
