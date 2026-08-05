@@ -2037,6 +2037,33 @@ function initConfig() {
 
     showNotification("Dados locais apagados.", "success");
   });
+
+  const btnExcluirConta = document.getElementById("btnExcluirConta");
+  btnExcluirConta?.addEventListener("click", async () => {
+    const ok = await confirmarAcao(
+      "Isso apaga sua conta de login e seus dados pessoais (perfil, foto, WhatsApp, repertório particular, mapas individuais) definitivamente. Escalas e cultos em que você participou continuam existindo pra igreja, só sem o vínculo com você. Não tem como desfazer.",
+      { titulo: "Excluir minha conta", textoConfirmar: "Quero excluir" }
+    );
+    if (!ok) return;
+
+    const confirmacao = prompt('Pra confirmar de vez, digite EXCLUIR (em maiúsculas):');
+    if (confirmacao !== "EXCLUIR") {
+      if (confirmacao !== null) showNotification("Digitado errado — sua conta não foi excluída.", "info");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.rpc("excluir_minha_conta");
+      if (error) throw error;
+
+      alert("Conta excluída. Você vai ser desconectado agora.");
+      await supabase.auth.signOut();
+      clearAuthData();
+      window.location.href = "index.html";
+    } catch (error) {
+      showNotification("Erro ao excluir conta: " + error.message, "error");
+    }
+  });
 }
 
 // ====== INIT GERAL ======

@@ -638,6 +638,36 @@ Faltava dar pro líder corrigir um culto salvo errado, ou excluir de vez.
 
 
 
+## 26. Sessão 05/08/2026 — Limpeza de contas de teste + "Excluir minha conta" (LGPD)
+
+**Limpeza feita direto no banco:** apagadas as 4 contas de teste (rodrigo/
+suportejustinistore@gmail.com, julio/reggaejprodrigo@gmail.com, FRANCISCO/
+srjustinibarbearia2020@gmail.com, JAISE/corretorajaise21@gmail.com). Só ficou a admin real
+(jaise mendonca / ise2ja@gmail.com). Isso desconectou a conta que o Rodrigo usava pra testar.
+
+**Descoberta no processo:** várias tabelas (`escalas`, `cultos`, `historico`,
+`trocas_escala`, `escala_musicas`, `musicas.vocalista_id`, `escala_celulas.membro_id`) têm
+FK sem `ON DELETE CASCADE` nem `SET NULL` pra `perfis`/`membros` — apagar uma conta direto
+falhava. `trocas_escala.solicitante_id` é obrigatório, então trocas da pessoa excluída são
+apagadas (não dá pra anonimizar um campo NOT NULL); os outros vínculos viram `null`
+(preserva o registro, só perde a ligação com a pessoa).
+
+**Nova função `excluir_minha_conta()` (`sql/019`)** — RPC que qualquer pessoa logada pode
+chamar pra apagar a própria conta e dados pessoais (perfil, foto, WhatsApp, repertório
+particular, mapas individuais) de vez, sem precisar de mim ou do Supabase Dashboard.
+Trava de segurança: se for a única admin da igreja, não deixa excluir sem promover outra
+pessoa primeiro (senão a igreja fica sem ninguém pra gerenciar).
+
+**Frontend:** card "Excluir minha conta" em Config, com confirmação em duas camadas —
+modal de aviso + precisa digitar "EXCLUIR" — antes de executar (ação irreversível, sem
+volta). Depois de excluir, desloga e volta pra tela de login.
+
+`app.js?v=21`.
+
+---
+
+
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase
