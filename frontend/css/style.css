@@ -125,6 +125,7 @@ body {
 }
 
 @media (max-width: 640px) {
+  .app-header { backdrop-filter: none; background: rgba(10, 8, 9, 0.98); }
   .user-info {
     order: 3;
     width: 100%;
@@ -472,6 +473,12 @@ body {
   cursor: pointer;
   font-size: 0.85rem;
   margin-left: 0.15rem;
+}
+
+.btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+  transform: none !important;
 }
 
 .footer-credito {

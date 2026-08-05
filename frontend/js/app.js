@@ -336,6 +336,33 @@ let musicas = [];
 let membros = [];
 let cultos = [];
 
+// Controle de carregamento preguiçoso: cada aba isolada só busca dados na primeira
+// vez que é aberta, e guarda quando foi a última busca pra não refazer a cada clique.
+const CACHE_TTL_MS = 20000; // 20s — dado "fresco o suficiente" pra não parecer travado nem desatualizado
+const cacheAbas = { trocas: 0, historico: 0, repertorio: 0, cultos: 0, dashboard: 0 };
+
+function precisaRecarregar(chave) {
+  return Date.now() - cacheAbas[chave] > CACHE_TTL_MS;
+}
+function marcarCarregado(chave) {
+  cacheAbas[chave] = Date.now();
+}
+
+// Feedback visual imediato: desabilita o botão e troca o texto enquanto a ação roda,
+// pra nunca dar a impressão de que o clique não funcionou.
+async function comFeedbackDeCarregamento(botao, textoCarregando, acaoAsync) {
+  if (!botao) return acaoAsync();
+  const textoOriginal = botao.textContent;
+  botao.disabled = true;
+  botao.textContent = textoCarregando;
+  try {
+    return await acaoAsync();
+  } finally {
+    botao.disabled = false;
+    botao.textContent = textoOriginal;
+  }
+}
+
 // ====== INTERFACE DE LOGIN ======
 function showLoginForm() {
   const app = document.querySelector('.app-main');
@@ -436,18 +463,21 @@ async function handleLogin(e) {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   const messageEl = document.getElementById('authMessage');
-  
+  const botao = e.target.querySelector('button[type="submit"]');
+
   try {
     messageEl.style.display = 'block';
     messageEl.style.background = '#2563eb';
     messageEl.style.color = '#fff';
     messageEl.textContent = 'Fazendo login...';
-    
+    if (botao) { botao.disabled = true; botao.textContent = 'Entrando...'; }
+
     await login(email, password);
     window.location.reload();
   } catch (error) {
     messageEl.style.background = '#dc2626';
     messageEl.textContent = error.message;
+    if (botao) { botao.disabled = false; botao.textContent = 'Entrar'; }
   }
 }
 
@@ -534,10 +564,22 @@ function initTabs() {
         renderAniversariantes();
       }
       if (tab === "dashboard") {
-        loadDashboard();
+        carregarDashboardSeNecessario();
       }
       if (tab === "modopalco") {
         popularSelectPalco();
+      }
+      if (tab === "trocas") {
+        carregarTrocasSeNecessario();
+      }
+      if (tab === "historico") {
+        carregarHistoricoSeNecessario();
+      }
+      if (tab === "meurepertorio") {
+        carregarRepertorioSeNecessario();
+      }
+      if (tab === "cultos") {
+        carregarCultosSeNecessario();
       }
     });
   });
@@ -662,6 +704,11 @@ function initMusicas() {
       return;
     }
 
+    const botaoSalvar = document.getElementById("btnSalvarMusica");
+    const textoOriginal = botaoSalvar.textContent;
+    botaoSalvar.disabled = true;
+    botaoSalvar.textContent = "Salvando...";
+
     try {
       await apiCall("/musicas", {
         method: "POST",
@@ -681,6 +728,9 @@ function initMusicas() {
       showNotification("Música criada com sucesso!", "success");
     } catch (error) {
       showNotification("Erro ao criar música: " + error.message, "error");
+    } finally {
+      botaoSalvar.disabled = false;
+      botaoSalvar.textContent = textoOriginal;
     }
   });
 }
@@ -838,6 +888,12 @@ function mostrarMapaMusica(musica) {
 let repertorioPessoal = [];
 let filtroRepertorioTexto = "";
 
+async function carregarRepertorioSeNecessario() {
+  if (!precisaRecarregar("repertorio")) return;
+  await loadRepertorioPessoal();
+  marcarCarregado("repertorio");
+}
+
 async function loadRepertorioPessoal() {
   try {
     const { data, error } = await supabase.from("repertorio_pessoal")
@@ -860,8 +916,6 @@ function limparFormRepertorio() {
 }
 
 function initMeuRepertorio() {
-  loadRepertorioPessoal();
-
   document.getElementById("btnCancelarEdicaoRepertorio").addEventListener("click", limparFormRepertorio);
 
   document.getElementById("repertorioBusca").addEventListener("input", (e) => {
@@ -1182,6 +1236,11 @@ function initMembros() {
       data_entrada: dataEntrada, disponibilidade, ativo, instrumentos,
     };
 
+    const botaoSalvar = document.getElementById("btnSalvarMembro");
+    const textoOriginalBotao = botaoSalvar.textContent;
+    botaoSalvar.disabled = true;
+    botaoSalvar.textContent = "Salvando...";
+
     try {
       let membroId = editandoId;
 
@@ -1206,6 +1265,9 @@ function initMembros() {
       showNotification(editandoId ? "Membro atualizado!" : "Membro cadastrado com sucesso!", "success");
     } catch (error) {
       showNotification("Erro ao salvar membro: " + error.message, "error");
+    } finally {
+      botaoSalvar.disabled = false;
+      botaoSalvar.textContent = textoOriginalBotao;
     }
   });
 }
@@ -1417,9 +1479,13 @@ async function loadCultos() {
   }
 }
 
-function initCultos() {
-  loadCultos();
+async function carregarCultosSeNecessario() {
+  if (!precisaRecarregar("cultos")) return;
+  await loadCultos();
+  marcarCarregado("cultos");
+}
 
+function initCultos() {
   const cardNovo = document.getElementById("cardNovoCulto");
   if (cardNovo) cardNovo.style.display = currentUser?.souLideranca ? "block" : "none";
 
@@ -1445,6 +1511,11 @@ function initCultos() {
       return;
     }
 
+    const botaoSalvar = document.getElementById("btnSalvarCulto");
+    const textoOriginal = botaoSalvar.textContent;
+    botaoSalvar.disabled = true;
+    botaoSalvar.textContent = "Criando...";
+
     try {
       await apiCall("/cultos", {
         method: "POST",
@@ -1457,10 +1528,14 @@ function initCultos() {
 
       form.reset();
       await loadCultos();
-      
+      cacheAbas.dashboard = 0;
+
       alert("Culto criado com sucesso!");
     } catch (error) {
       alert("Erro ao criar culto: " + error.message);
+    } finally {
+      botaoSalvar.disabled = false;
+      botaoSalvar.textContent = textoOriginal;
     }
   });
 }
@@ -1745,15 +1820,15 @@ function initMainApp() {
   // HTML já está no index.html, apenas inicializar funcionalidades
   initTabs();
   initEscala();
-  initTrocas();
-  initMusicas();
-  initMeuRepertorio();
-  initMembros();
-  initCultos();
+  initTrocas();       // só liga os listeners agora; dados de trocas carregam no 1º clique na aba
+  initMusicas();       // eager: Cultos, Modo Palco e a própria aba Músicas dependem do array `musicas`
+  initMeuRepertorio(); // só liga os listeners agora; dados carregam no 1º clique na aba
+  initMembros();       // eager: Escala e Trocas dependem do array `membros` pra mostrar nomes
+  initCultos();        // só liga os listeners agora; dados carregam no 1º clique na aba
   initMapaIndividual();
-  initHistorico();
+  initHistorico();     // só liga os listeners agora; dados carregam no 1º clique na aba
   initConfig();
-  loadDashboard();
+  carregarDashboardSeNecessario(); // Início é a aba padrão, então esse sim carrega de cara
   initModoPalco();
 }
 
@@ -1842,15 +1917,19 @@ async function criarEscala() {
 
 async function aprovarEscala() {
   if (!escalaAtual) return;
-  try {
-    const { error } = await supabase.from("escalas").update({ aprovada: true }).eq("id", escalaAtual.id);
-    if (error) throw error;
-    escalaAtual.aprovada = true;
-    renderizarPlanilha();
-    showNotification("Escala aprovada com sucesso!", "success");
-  } catch (error) {
-    showNotification("Erro ao aprovar escala: " + error.message, "error");
-  }
+  const botao = document.getElementById("btnAprovarEscala");
+  await comFeedbackDeCarregamento(botao, "Aprovando...", async () => {
+    try {
+      const { error } = await supabase.from("escalas").update({ aprovada: true }).eq("id", escalaAtual.id);
+      if (error) throw error;
+      escalaAtual.aprovada = true;
+      cacheAbas.dashboard = 0;
+      renderizarPlanilha();
+      showNotification("Escala aprovada com sucesso!", "success");
+    } catch (error) {
+      showNotification("Erro ao aprovar escala: " + error.message, "error");
+    }
+  });
 }
 
 function mostrarBotaoCriar() {
@@ -1891,10 +1970,10 @@ function celulaDe(linhaId, colunaId) {
   return escalaCelulas.find((c) => c.linha_id === linhaId && c.coluna_id === colunaId);
 }
 
-function nomeDaCelula(celula) {
+function nomeDaCelula(celula, membrosPorId) {
   if (!celula) return "";
   if (celula.nome_livre) return celula.nome_livre;
-  const membro = membros.find((m) => m.id === celula.membro_id);
+  const membro = membrosPorId ? membrosPorId.get(celula.membro_id) : membros.find((m) => m.id === celula.membro_id);
   return membro ? membro.nome : "";
 }
 
@@ -1906,6 +1985,7 @@ async function alternarConfirmacaoCelula(celulaId) {
     const { error } = await supabase.rpc("confirmar_presenca", { p_celula_id: celulaId, p_status: novoStatus });
     if (error) throw error;
     celula.status_confirmacao = novoStatus;
+    cacheAbas.dashboard = 0;
     renderizarPlanilha();
     showNotification(novoStatus === "confirmado" ? "Presença confirmada! ✅" : "Confirmação removida.", "success");
   } catch (error) {
@@ -1924,6 +2004,12 @@ function renderizarPlanilha() {
 
   document.getElementById("btnBaixarPdf").style.display = "inline-block";
   document.getElementById("btnCopiarZap").style.display = "inline-block";
+
+  // Monta os índices uma vez só (O(1) por célula depois), em vez de escalaCelulas.find()
+  // e membros.find() dentro do loop aninhado linha × coluna (que rodava O(n) a cada célula).
+  const celulasPorChave = new Map();
+  escalaCelulas.forEach((c) => celulasPorChave.set(`${c.linha_id}|${c.coluna_id}`, c));
+  const membrosPorId = new Map(membros.map((m) => [m.id, m]));
 
   let html = `<div class="planilha-wrapper"><table class="planilha-escala"><thead><tr>
     <th>Dias</th><th>Datas</th>`;
@@ -1946,8 +2032,8 @@ function renderizarPlanilha() {
       <td>${souLider ? `<input type="text" value="${linha.datas}" onchange="editarLinha('${linha.id}', 'datas', this.value)" class="input-inline">` : linha.datas}</td>`;
 
     escalaColunas.forEach((col) => {
-      const celula = celulaDe(linha.id, col.id);
-      const nome = nomeDaCelula(celula);
+      const celula = celulasPorChave.get(`${linha.id}|${col.id}`);
+      const nome = nomeDaCelula(celula, membrosPorId);
       let onclickAttr = "";
       if (souLider) {
         onclickAttr = `onclick="editarCelula('${linha.id}', '${col.id}')"`;
@@ -1957,7 +2043,7 @@ function renderizarPlanilha() {
 
       let badgeConfirmacao = "";
       if (celula && (celula.membro_id || (celula.nome_livre && celula.nome_livre.trim()))) {
-        const membroDaCelula = celula.membro_id ? membros.find((m) => m.id === celula.membro_id) : null;
+        const membroDaCelula = celula.membro_id ? membrosPorId.get(celula.membro_id) : null;
         const ehMinhaCelula = membroDaCelula && membroDaCelula.perfil_id === currentUser.id;
 
         if (ehMinhaCelula || souLider) {
@@ -2248,10 +2334,14 @@ async function copiarEscalaZap() {
 async function initTrocas() {
   const formSolicitarTroca = document.getElementById("formSolicitarTroca");
   formSolicitarTroca?.addEventListener("submit", solicitarTroca);
+}
 
+async function carregarTrocasSeNecessario() {
+  if (!precisaRecarregar("trocas")) return;
   await carregarEscalasParaTroca();
   await carregarMembrosParaTroca();
   await carregarTrocas();
+  marcarCarregado("trocas");
 }
 
 async function carregarEscalasParaTroca() {
@@ -2435,9 +2525,15 @@ async function aprovarTroca(trocaId, aprovar) {
 }
 
 // ====== SISTEMA DE HISTÓRICO ======
+async function carregarHistoricoSeNecessario() {
+  if (!precisaRecarregar("historico")) return;
+  await carregarHistorico();
+  marcarCarregado("historico");
+}
+
 async function initHistorico() {
   const btnFiltrarHistorico = document.getElementById("btnFiltrarHistorico");
-  btnFiltrarHistorico?.addEventListener("click", carregarHistorico);
+  btnFiltrarHistorico?.addEventListener("click", () => { cacheAbas.historico = 0; carregarHistoricoSeNecessario(); });
 
   if (!perfisDaIgreja.length) {
     await carregarPerfisDaIgreja();
@@ -2447,8 +2543,6 @@ async function initHistorico() {
     filtroUsuario.innerHTML = `<option value="">Todos os usuários</option>` +
       perfisDaIgreja.map((p) => `<option value="${p.id}">${p.nome}</option>`).join("");
   }
-
-  await carregarHistorico();
 }
 
 async function carregarHistorico() {
@@ -2668,58 +2762,61 @@ async function init() {
 }
 
 // ====== DASHBOARD ======
+async function carregarDashboardSeNecessario() {
+  if (!precisaRecarregar("dashboard")) return;
+  await loadDashboard();
+  marcarCarregado("dashboard");
+}
+
 async function loadDashboard() {
   const hoje = new Date();
   const hojeStr = hoje.toISOString().slice(0, 10);
-
-  // Próximo culto / último culto
-  try {
-    const { data: proximos } = await supabase.from("cultos").select("*")
-      .gte("data", hojeStr).order("data", { ascending: true }).limit(1);
-    const el = document.querySelector("#dashProximoCulto .dash-card-corpo");
-    if (proximos && proximos.length) {
-      const c = proximos[0];
-      el.innerHTML = `<strong>${c.nome}</strong><br>${new Date(c.data + "T00:00:00").toLocaleDateString("pt-BR")}`;
-    } else {
-      el.textContent = "Nenhum culto agendado.";
-    }
-  } catch (e) { console.error(e); }
-
-  try {
-    const { data: ultimos } = await supabase.from("cultos").select("*")
-      .lt("data", hojeStr).order("data", { ascending: false }).limit(1);
-    const el = document.querySelector("#dashUltimoCulto .dash-card-corpo");
-    if (ultimos && ultimos.length) {
-      const c = ultimos[0];
-      el.innerHTML = `<strong>${c.nome}</strong><br>${new Date(c.data + "T00:00:00").toLocaleDateString("pt-BR")}`;
-    } else {
-      el.textContent = "Nenhum culto registrado ainda.";
-    }
-  } catch (e) { console.error(e); }
-
-  // Escala do mês + confirmados/pendentes/vagas
   const mes = hoje.getMonth() + 1;
   const ano = hoje.getFullYear();
 
+  // As 3 primeiras consultas são independentes entre si — rodam em paralelo, não em fila
+  const [proximoRes, ultimoRes, escalaRes] = await Promise.allSettled([
+    supabase.from("cultos").select("nome, data").gte("data", hojeStr).order("data", { ascending: true }).limit(1),
+    supabase.from("cultos").select("nome, data").lt("data", hojeStr).order("data", { ascending: false }).limit(1),
+    supabase.from("escalas").select("id, aprovada").eq("mes", mes).eq("ano", ano),
+  ]);
+
+  const elProximo = document.querySelector("#dashProximoCulto .dash-card-corpo");
+  if (proximoRes.status === "fulfilled" && proximoRes.value.data?.length) {
+    const c = proximoRes.value.data[0];
+    elProximo.innerHTML = `<strong>${c.nome}</strong><br>${new Date(c.data + "T00:00:00").toLocaleDateString("pt-BR")}`;
+  } else {
+    elProximo.textContent = "Nenhum culto agendado.";
+  }
+
+  const elUltimo = document.querySelector("#dashUltimoCulto .dash-card-corpo");
+  if (ultimoRes.status === "fulfilled" && ultimoRes.value.data?.length) {
+    const c = ultimoRes.value.data[0];
+    elUltimo.innerHTML = `<strong>${c.nome}</strong><br>${new Date(c.data + "T00:00:00").toLocaleDateString("pt-BR")}`;
+  } else {
+    elUltimo.textContent = "Nenhum culto registrado ainda.";
+  }
+
+  const elEscala = document.querySelector("#dashEscalaMes .dash-card-corpo");
+  const elConf = document.querySelector("#dashConfirmados .dash-card-corpo");
+  const elPend = document.querySelector("#dashPendentes .dash-card-corpo");
+  const elVagas = document.querySelector("#dashVagas .dash-card-corpo");
+
+  const escalas = escalaRes.status === "fulfilled" ? escalaRes.value.data : null;
+  if (!escalas || escalas.length === 0) {
+    elEscala.innerHTML = `${getMonthName(mes)}/${ano} — ainda não criada.`;
+    elConf.textContent = "—";
+    elPend.textContent = "—";
+    elVagas.textContent = "—";
+    return;
+  }
+
+  const escala = escalas[0];
+  elEscala.innerHTML = `${getMonthName(mes)}/${ano} — ${escala.aprovada ? "✅ aprovada" : "⏳ pendente de aprovação"}`;
+
   try {
-    const { data: escalas } = await supabase.from("escalas").select("*").eq("mes", mes).eq("ano", ano);
-    const elEscala = document.querySelector("#dashEscalaMes .dash-card-corpo");
-    const elConf = document.querySelector("#dashConfirmados .dash-card-corpo");
-    const elPend = document.querySelector("#dashPendentes .dash-card-corpo");
-    const elVagas = document.querySelector("#dashVagas .dash-card-corpo");
-
-    if (!escalas || escalas.length === 0) {
-      elEscala.innerHTML = `${getMonthName(mes)}/${ano} — ainda não criada.`;
-      elConf.textContent = "—";
-      elPend.textContent = "—";
-      elVagas.textContent = "—";
-      return;
-    }
-
-    const escala = escalas[0];
-    elEscala.innerHTML = `${getMonthName(mes)}/${ano} — ${escala.aprovada ? "✅ aprovada" : "⏳ pendente de aprovação"}`;
-
-    const { data: celulas } = await supabase.from("escala_celulas").select("*").eq("escala_id", escala.id);
+    const { data: celulas } = await supabase.from("escala_celulas")
+      .select("membro_id, nome_livre, status_confirmacao").eq("escala_id", escala.id);
     const preenchidas = (celulas || []).filter((c) => c.membro_id || (c.nome_livre && c.nome_livre.trim()));
     const confirmados = preenchidas.filter((c) => c.status_confirmacao === "confirmado").length;
     const pendentes = preenchidas.filter((c) => c.status_confirmacao !== "confirmado").length;
@@ -2729,7 +2826,7 @@ async function loadDashboard() {
     elPend.textContent = String(pendentes);
     elVagas.textContent = String(Math.max(vagas, 0));
   } catch (e) {
-    console.error("Erro ao carregar dashboard:", e);
+    console.error("Erro ao carregar células da escala no dashboard:", e);
   }
 }
 

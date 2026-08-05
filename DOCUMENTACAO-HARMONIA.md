@@ -429,7 +429,58 @@ histórico, com o formato certo. Registros de teste apagados depois.
 
 ---
 
+## 18. Sessão 04/08/2026 (tarde) — E-mail de convite resolvido de vez
+
+O problema crítico documentado na Sessão 16 (Resend em modo sandbox, só mandava e-mail pro
+próprio dono da conta) foi **resolvido pelo Rodrigo** durante esta sessão:
+
+1. Verificou o domínio `agenciajustinis.com.br` no Resend (resend.com/domains)
+2. Trocou o remetente no Supabase Dashboard (Authentication → Emails/SMTP) pra
+   `harmonia@agenciajustinis.com.br`, com o SMTP do Resend (`smtp.resend.com`, porta 465,
+   usuário `resend`, senha = API Key do Resend)
+
+**Confirmado nos logs de produção:** convite enviado pra `srjustinibarbearia2020@gmail.com` às
+18:43 (`POST /invite → 200`), e a pessoa **recebeu, clicou no link e criou a conta**
+(`user_signedup` às 18:44) — fluxo completo ponta a ponta, sem intervenção de código.
+
+**Não é mais necessário usar o código de convite como contorno** — convite por e-mail funciona
+normalmente pra qualquer destinatário agora. A recomendação da Sessão 16 sobre isso está
+obsoleta.
+
+---
+
+## 19. Sessão 04/08/2026 (tarde) — Otimização geral de performance
+
+Relatório completo em `RELATORIO-PERFORMANCE.md` (raiz do projeto). Resumo:
+
+**Causa real da lentidão:** não era re-render (não tem React) — era **excesso de rede**.
+`initMainApp()` disparava o carregamento de todas as 10 abas de uma vez no login, ~15-20
+requisições simultâneas ao Supabase, mesmo pra abas que o usuário nunca ia abrir.
+
+**Corrigido:**
+- Carregamento preguiçoso: Trocas, Histórico, Meu Repertório e Cultos só buscam dado na
+  primeira vez que a aba abre (cache de 20s). Membros e Músicas continuam eager porque
+  Escala/Modo Palco dependem deles
+- Dashboard: 3 consultas que rodavam em fila agora rodam em paralelo (`Promise.allSettled`),
+  e só busca as colunas usadas (sem `SELECT *`)
+- Grade de Escala: trocado `.find()` repetido dentro do loop linha×coluna por `Map` (O(1)
+  em vez de O(n) por célula)
+- Header sem `backdrop-filter` no celular (custo de repaint contínuo na rolagem)
+- Feedback visual de carregamento em Login, Salvar Membro, Salvar Música, Aprovar Escala e
+  Criar Culto (desabilita botão + muda texto durante a chamada)
+- 3 índices novos no banco: `escala_celulas(escala_id)`, `cultos(data)`,
+  `cultos(igreja_id, data)` (`sql/014`)
+
+**Avaliado e descartado por não se aplicar:** useMemo/useCallback/Context API/hooks (não é
+React), code splitting de rotas (bundle já é pequeno, o gargalo era rede não JS), debounce
+de busca em Meu Repertório (busca já é 100% client-side, sem consulta por tecla).
+
+`style.css?v=7`, `app.js?v=16`.
+
+---
+
 ## 9. Workflow padrão (repetindo o que já vale)
+
 
 1. Você pede a próxima fase
 2. Eu edito o código, aplico migrations direto no Supabase (quando aplicável) e gero um zip com
