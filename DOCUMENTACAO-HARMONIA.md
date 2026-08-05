@@ -514,7 +514,36 @@ de busca em Meu Repertório (busca já é 100% client-side, sem consulta por tec
 
 ---
 
+## 21. Sessão 04/08/2026 (tarde) — Fim dos alert()/confirm() nativos
+
+Última pendência de UX antiga da lista de "ficou de fora": Trocas e algumas ações de Escala
+ainda usavam `alert()`/`confirm()` do navegador — destoava do resto do app já com tema
+claro/escuro e cards flutuantes.
+
+**Criado:** `confirmarAcao(mensagem, opções)` — modal reutilizável (reaproveita
+`.modal`/`.modal-content` que já existiam) que devolve uma Promise<boolean>, no lugar de
+`confirm()`. Uso: `if (await confirmarAcao("Excluir?")) { ... }`.
+
+**Trocado em todo o app** (11 pontos): cadastro de igreja duplicada, excluir música do
+repertório pessoal, excluir membro, remover liderança, criar escala nova, remover
+coluna/linha da escala, apagar dados locais, e o fluxo completo de solicitar troca —
+que era o pedido original. Validações e mensagens de sucesso/erro que usavam `alert()`
+(música sem título, membro sem nome, culto sem data, "culto criado com sucesso", Wake Lock)
+viraram `showNotification()`.
+
+**Ficou de fora, documentando pra não esquecer:**
+- 4 `prompt()` (nome de coluna/linha, mensagem da troca) continuam nativos — é um padrão
+  diferente (pede texto digitado), não estava no pedido original, mas é candidato natural pra
+  virar modal com campo de texto numa próxima rodada
+- 3 `alert()` dentro de uma função de debug (`testarAPI` ou similar) que não está ligada a
+  nenhum botão da interface — código morto, identificado mas não removido
+
+`app.js?v=18`.
+
+---
+
 ## 9. Workflow padrão (repetindo o que já vale)
+
 
 
 

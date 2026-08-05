@@ -81,10 +81,11 @@ async function register(name, email, password, modoIgreja, igrejaCampo) {
       });
       const check = await resp.json();
       if (check.existe) {
-        const seguir = confirm(
+        const seguir = await confirmarAcao(
           `Já existe uma igreja chamada "${check.nomeEncontrado}" cadastrada no Harmonia.\n\n` +
           `Se é a mesma igreja, cancele e peça o código de convite pra quem já é líder lá — não digite o nome de novo, isso cria uma igreja separada e vazia.\n\n` +
-          `Clique OK só se for uma igreja realmente diferente, com o mesmo nome por coincidência.`
+          `Confirme só se for uma igreja realmente diferente, com o mesmo nome por coincidência.`,
+          { titulo: "Igreja já cadastrada", textoConfirmar: "É uma igreja diferente", perigo: false }
         );
         if (!seguir) throw new Error("Cadastro cancelado. Peça o código de convite pra entrar na igreja já existente.");
       }
@@ -365,6 +366,33 @@ async function comFeedbackDeCarregamento(botao, textoCarregando, acaoAsync) {
 }
 
 // ====== INTERFACE DE LOGIN ======
+// Substitui o confirm() nativo do navegador por um modal com a cara do app.
+// Uso: if (await confirmarAcao("Excluir isso?")) { ...faz a ação... }
+function confirmarAcao(mensagem, { titulo = "Confirmar ação", textoConfirmar = "Confirmar", perigo = true } = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("modalConfirmar");
+    document.getElementById("confirmarTitulo").textContent = titulo;
+    document.getElementById("confirmarMensagem").textContent = mensagem;
+    const btnOk = document.getElementById("btnConfirmarOk");
+    const btnCancelar = document.getElementById("btnConfirmarCancelar");
+    btnOk.textContent = textoConfirmar;
+    btnOk.className = "btn " + (perigo ? "danger" : "primary");
+
+    function limpar(resultado) {
+      modal.style.display = "none";
+      btnOk.removeEventListener("click", onOk);
+      btnCancelar.removeEventListener("click", onCancelar);
+      resolve(resultado);
+    }
+    function onOk() { limpar(true); }
+    function onCancelar() { limpar(false); }
+
+    btnOk.addEventListener("click", onOk);
+    btnCancelar.addEventListener("click", onCancelar);
+    modal.style.display = "block";
+  });
+}
+
 // Botão de "olho" nos campos de senha — funciona em qualquer tela que use a classe .btn-olho
 function initTogglesSenha(escopo = document) {
   escopo.querySelectorAll(".btn-olho").forEach((btn) => {
@@ -752,7 +780,7 @@ function initMusicas() {
     const obs = document.getElementById("musicaObs").value.trim();
 
     if (!titulo) {
-      alert("Informe o título da música.");
+      showNotification("Informe o título da música.", "error");
       return;
     }
 
@@ -1013,7 +1041,7 @@ function initMeuRepertorio() {
     const obs = document.getElementById("repertorioObs").value.trim();
 
     if (!titulo) {
-      alert("Informe o título da música.");
+      showNotification("Informe o título da música.", "error");
       return;
     }
 
@@ -1113,7 +1141,7 @@ function renderRepertorioPessoal() {
       btnExcluir.textContent = "Excluir";
       btnExcluir.addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (!confirm(`Excluir "${m.titulo}" do seu repertório?`)) return;
+        if (!(await confirmarAcao(`Excluir "${m.titulo}" do seu repertório?`, { titulo: "Excluir música", textoConfirmar: "Excluir" }))) return;
         try {
           const { error } = await supabase.from("repertorio_pessoal").delete().eq("id", m.id);
           if (error) throw error;
@@ -1326,7 +1354,7 @@ function initMembros() {
     const instrumentos = coletarInstrumentosDoForm();
 
     if (!nome) {
-      alert("Informe o nome do membro.");
+      showNotification("Informe o nome do membro.", "error");
       return;
     }
 
@@ -1454,7 +1482,7 @@ function editarMembroPorId(membroId) {
 }
 
 async function excluirMembro(membroId, nome) {
-  const ok = confirm(`Tem certeza que deseja excluir "${nome}"? Essa ação não pode ser desfeita.`);
+  const ok = await confirmarAcao(`Tem certeza que deseja excluir "${nome}"? Essa ação não pode ser desfeita.`, { titulo: "Excluir membro", textoConfirmar: "Excluir" });
   if (!ok) return;
   try {
     const { error } = await supabase.rpc("excluir_membro", { p_membro_id: membroId });
@@ -1478,7 +1506,7 @@ async function tornarLiderMembro(perfilId) {
 }
 
 async function removerLiderancaMembro(perfilId) {
-  const ok = confirm("Remover a liderança dessa pessoa? Ela continua no ministério, só deixa de ser líder.");
+  const ok = await confirmarAcao("Remover a liderança dessa pessoa? Ela continua no ministério, só deixa de ser líder.", { titulo: "Remover liderança", textoConfirmar: "Remover", perigo: false });
   if (!ok) return;
   try {
     const { error } = await supabase.rpc("remover_lideranca", { p_perfil_id: perfilId });
@@ -1597,7 +1625,7 @@ function initCultos() {
     const select = document.getElementById("cultoMusicas");
 
     if (!data || !nome) {
-      alert("Informe data e nome do culto.");
+      showNotification("Informe data e nome do culto.", "error");
       return;
     }
 
@@ -1606,7 +1634,7 @@ function initCultos() {
     );
 
     if (selecionadas.length === 0) {
-      alert("Selecione pelo menos uma música para o culto.");
+      showNotification("Selecione pelo menos uma música para o culto.", "error");
       return;
     }
 
@@ -1629,9 +1657,9 @@ function initCultos() {
       await loadCultos();
       cacheAbas.dashboard = 0;
 
-      alert("Culto criado com sucesso!");
+      showNotification("Culto criado com sucesso!", "success");
     } catch (error) {
-      alert("Erro ao criar culto: " + error.message);
+      showNotification("Erro ao criar culto: " + error.message, "error");
     } finally {
       botaoSalvar.disabled = false;
       botaoSalvar.textContent = textoOriginal;
@@ -1804,13 +1832,13 @@ async function requestWakeLock() {
       wakeLock.addEventListener("release", () => {
         console.log("Wake Lock liberado");
       });
-      alert("Tentando manter a tela ligada enquanto o app estiver aberto.");
+      showNotification("Tentando manter a tela ligada enquanto o app estiver aberto.", "success");
     } else {
-      alert("Este navegador/dispositivo não suporta manter a tela ligada.");
+      showNotification("Este navegador/dispositivo não suporta manter a tela ligada.", "error");
     }
   } catch (err) {
     console.error(err);
-    alert("Não foi possível ativar o Wake Lock: " + err.message);
+    showNotification("Não foi possível ativar o Wake Lock: " + err.message, "error");
   }
 }
 
@@ -1890,9 +1918,10 @@ function initConfig() {
   });
 
   const btnLimpar = document.getElementById("btnLimparDados");
-  btnLimpar.addEventListener("click", () => {
-    const ok = confirm(
-      "Tem certeza? Isso apagará todas as músicas, membros e cultos deste dispositivo."
+  btnLimpar.addEventListener("click", async () => {
+    const ok = await confirmarAcao(
+      "Isso apagará todas as músicas, membros e cultos salvos neste dispositivo (dados locais de contingência, não afeta o banco de dados).",
+      { titulo: "Apagar dados locais", textoConfirmar: "Apagar" }
     );
     if (!ok) return;
 
@@ -1910,7 +1939,7 @@ function initConfig() {
     renderCultos();
     renderAniversariantes();
 
-    alert("Dados locais apagados.");
+    showNotification("Dados locais apagados.", "success");
   });
 }
 
@@ -1974,11 +2003,14 @@ async function carregarEscala() {
       mostrarBotaoAprovar();
       showNotification(`✅ Escala carregada: ${getMonthName(mes)}/${ano}`, "success");
     } else {
-      const confirmar = confirm(`📅 Nenhuma escala encontrada para ${getMonthName(mes)}/${ano}.\n\n✨ Deseja criar uma nova escala?`);
+      const confirmar = await confirmarAcao(
+        `Nenhuma escala encontrada para ${getMonthName(mes)}/${ano}.\n\nDeseja criar uma nova escala?`,
+        { titulo: "Criar nova escala", textoConfirmar: "Criar escala", perigo: false }
+      );
       if (confirmar && currentUser?.souLideranca) {
         await criarEscala();
       } else if (confirmar) {
-        alert("❌ Apenas líderes podem criar escalas.");
+        showNotification("Apenas líderes podem criar escalas.", "error");
       } else {
         escalaAtual = null;
         renderizarPlanilhaVazia();
@@ -2202,7 +2234,7 @@ async function adicionarColuna() {
 }
 
 async function removerColuna(colunaId) {
-  if (!confirm("Remover esta coluna? As pessoas escaladas nela também serão removidas.")) return;
+  if (!(await confirmarAcao("Remover esta coluna? As pessoas escaladas nela também serão removidas.", { titulo: "Remover coluna", textoConfirmar: "Remover" }))) return;
   try {
     const { error } = await supabase.from("escala_colunas").delete().eq("id", colunaId);
     if (error) throw error;
@@ -2230,7 +2262,7 @@ async function adicionarLinha() {
 }
 
 async function removerLinha(linhaId) {
-  if (!confirm("Remover esta linha da escala?")) return;
+  if (!(await confirmarAcao("Remover esta linha da escala?", { titulo: "Remover linha", textoConfirmar: "Remover" }))) return;
   try {
     const { error } = await supabase.from("escala_linhas").delete().eq("id", linhaId);
     if (error) throw error;
@@ -2347,15 +2379,15 @@ async function solicitarTrocaCelula(celulaId, nomeColuna, nomeAtual) {
     await carregarPerfisDaIgreja();
     const { data: membro } = await supabase.from("membros").select("perfil_id").eq("id", celula.membro_id).single();
     if (!membro?.perfil_id) {
-      alert(`${nomeAtual} ainda não tem conta no Harmonia, então não dá pra mandar o pedido por aqui. Fala direto com essa pessoa.`);
+      showNotification(`${nomeAtual} ainda não tem conta no Harmonia, então não dá pra mandar o pedido por aqui. Fala direto com essa pessoa.`, "error");
       return;
     }
     if (membro.perfil_id === currentUser.id) {
-      alert("Essa escalação já é sua — não faz sentido pedir troca com você mesmo 🙂");
+      showNotification("Essa escalação já é sua — não faz sentido pedir troca com você mesmo 🙂", "info");
       return;
     }
 
-    const confirmar = confirm(`Solicitar troca com ${nomeAtual} em "${nomeColuna}"?`);
+    const confirmar = await confirmarAcao(`Solicitar troca com ${nomeAtual} em "${nomeColuna}"?`, { titulo: "Solicitar troca", textoConfirmar: "Solicitar", perigo: false });
     if (!confirmar) return;
 
     const observacao = prompt("Quer deixar uma mensagem junto do pedido? (opcional)") || null;
@@ -2371,7 +2403,7 @@ async function solicitarTrocaCelula(celulaId, nomeColuna, nomeAtual) {
       showNotification("Erro ao solicitar troca: " + error.message, "error");
     }
   } else {
-    alert(`${nomeAtual} ainda não tem conta no Harmonia, então não dá pra mandar o pedido por aqui. Fala direto com essa pessoa.`);
+    showNotification(`${nomeAtual} ainda não tem conta no Harmonia, então não dá pra mandar o pedido por aqui. Fala direto com essa pessoa.`, "error");
   }
 }
 

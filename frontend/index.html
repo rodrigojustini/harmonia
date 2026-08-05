@@ -692,6 +692,18 @@
     </section>
   </main>
 
+  <!-- Modal genérico de confirmação, usado no lugar do confirm() nativo do navegador -->
+  <div id="modalConfirmar" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width:400px;">
+      <h3 id="confirmarTitulo">Confirmar ação</h3>
+      <p id="confirmarMensagem" style="white-space:pre-wrap;"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" id="btnConfirmarCancelar">Cancelar</button>
+        <button type="button" class="btn danger" id="btnConfirmarOk">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="app-footer">
     <span>Harmonia • Ministério de Louvor</span>
     <span class="footer-credito">Desenvolvido por Agência Justini'S</span>
@@ -701,6 +713,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=17"></script>
+  <script src="js/app.js?v=18"></script>
 </body>
 </html>
