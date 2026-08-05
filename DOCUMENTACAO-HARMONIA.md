@@ -668,6 +668,36 @@ volta). Depois de excluir, desloga e volta pra tela de login.
 
 
 
+## 27. Fim do dia 05/08/2026 — estado pra retomar amanhã
+
+**Última versão publicada:** `app.js?v=21`, `style.css?v=8`. Último zip entregue:
+`harmonia-v26.zip` (excluir minha conta + limpeza de contas de teste).
+
+**Banco:** `sql/001` até `sql/019` aplicados em produção. Última: `019-excluir-
+propria-conta-lgpd.sql`.
+
+**Estado dos dados:** só existe 1 igreja real (Verbo da Vida Intermares) e 1
+conta real (Jaise Mendonça, admin, `ise2ja@gmail.com`). Todas as contas de teste
+foram apagadas — pra continuar testando amanhã, criar conta nova (não usar a da
+Jaise) ou pedir convite pra ela.
+
+**A confirmar com o Rodrigo amanhã:** se o deploy do `harmonia-v26.zip` foi
+publicado (última mensagem dele foi antes de eu confirmar isso).
+
+**Pendências reais em aberto** (ver seção 26 do skill `harmonia-louvor` ou a
+lista logo acima nesta sessão): limpeza automática de escala, estrutura de IA,
+cruzar "vagas em aberto" com instrumento, converter os 4 `prompt()` restantes,
+ativar "Leaked Password Protection" no Supabase Dashboard.
+
+**Skill criada:** `harmonia-louvor` em `/mnt/skills/user/harmonia-louvor/SKILL.md`
+— documentação de estado atual (arquitetura, banco, padrão de RLS, identidade
+visual, features prontas, fluxo de trabalho). Este `DOCUMENTACAO-HARMONIA.md`
+continua sendo o histórico completo sessão por sessão; a skill é o resumo vivo.
+
+---
+
+
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase
