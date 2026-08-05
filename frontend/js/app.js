@@ -156,6 +156,7 @@ async function apiCall(endpoint, options = {}) {
   const params = new URLSearchParams(queryStr || "");
 
   try {
+    let m;
     // ---- MÚSICAS ----
     if (path === "/musicas" && method === "GET") {
       const { data, error } = await supabase.from("musicas").select("*").order("criado_em");
@@ -245,7 +246,6 @@ async function apiCall(endpoint, options = {}) {
       if (error) throw error;
       return data;
     }
-    let m;
     if ((m = path.match(/^\/escalas\/(.+)\/aprovar$/)) && method === "PUT") {
       const { error } = await supabase.from("escalas").update({ aprovada: true }).eq("id", m[1]);
       if (error) throw error;
