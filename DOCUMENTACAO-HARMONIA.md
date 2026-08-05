@@ -698,6 +698,35 @@ continua sendo o histórico completo sessão por sessão; a skill é o resumo vi
 
 
 
+## 28. Sessão 06/08/2026 — Hotfix: link de convite quebrado (localhost vazando pra produção)
+
+Klenio (testando, não convite real de pastor) mandou um convite pra
+`suportejustinistore@gmail.com` e o link não abria — "clica e não acontece nada".
+
+**Causa raiz:** a Edge Function `convidar-membro` montava o link de "criar senha"
+usando `siteUrl` — um valor que o **navegador** mandava (`window.location.origin`).
+O Klenio rodou o app localmente (Live Server, `http://localhost:3000` — visível nos
+logs do Supabase Auth pelo `referer`), então o convite saiu com link
+`http://localhost:3000/definir-senha.html`, que só existe no computador dele.
+Pra qualquer outra pessoa, clicar não faz nada (o navegador tenta abrir um site que
+não existe). Por isso funcionava ontem (sempre testado no site publicado) e quebrou
+hoje (testado localmente) — não foi regressão de código, foi ambiente diferente.
+
+**Correção (Edge Function `convidar-membro`, agora v3):** parou de confiar no
+`siteUrl` do navegador. URL de produção **fixa** no código do servidor
+(`https://harmonia-louvor.netlify.app`), sempre, não importa de onde o convite for
+disparado. Isso fecha essa categoria de bug de vez.
+
+**Limpeza:** apagada a conta pendente (`auth.users` + `perfis` + `membros`) criada
+por aquele convite quebrado, pra dar pra reenviar limpo.
+
+**Lição pro Rodrigo/equipe:** convites por e-mail só devem ser mandados a partir do
+site publicado (`harmonia-louvor.netlify.app`), nunca de uma cópia local rodando em
+`localhost`. Isso já era verdade antes, mas agora não quebra mais o link mesmo se
+alguém esquecer.
+
+
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase
