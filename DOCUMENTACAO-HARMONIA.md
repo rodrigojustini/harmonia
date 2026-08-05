@@ -753,6 +753,39 @@ Fase 1 — só faltava o caminho no frontend pra usar ela.
 
 
 
+## 30. Sessão 06/08/2026 — Prova de fogo: teste real multi-dispositivo
+
+Relatório completo em `RELATORIO-PROVA-DE-FOGO.md`. Resumo:
+
+**Bugs reais de mobile encontrados e corrigidos (só frontend, sem migration):**
+- Inputs/selects/textareas com fonte 14.4px causavam **zoom automático do Safari
+  em qualquer iPhone/iPad** ao tocar em qualquer campo (regra do iOS: <16px = zoom).
+  Subiu pra 16px em todo o app
+- Alvo de toque do selo de confirmação de presença (`.badge-confirmacao`) quase
+  invisível — sem padding nenhum. Aumentado
+- Mesma coisa em `.btn-icone-remover` (remover coluna/linha da escala)
+- Abas do menu (11 no total) com alvo pequeno no celular — aumentadas só na media
+  query mobile, sem mudar desktop
+
+**Verificado nos logs reais de produção:** tráfego de iPhone (iOS 18 Safari) e
+desktop Windows/Chrome essa semana, 100% de sucesso no servidor. Os 4 erros `403`
+que apareceram nos logs eram exatamente o bug de auto-edição de membro relatado
+antes (sessão 29) — confirmando que o diagnóstico foi certeiro e que a correção já
+está funcionando (log mostra `PATCH 204` de sucesso logo depois, com upload de
+foto incluso).
+
+**Verificado no código, sem problema:** tabela da Escala já tinha rolagem
+horizontal própria, grades de card colapsam pra 1 coluna em tela estreita sem
+estourar, meta viewport correto nas duas páginas.
+
+**Não dá pra testar sem aparelho físico** (documentado no relatório como checklist
+pro Rodrigo): tablet real, Android real, rotação de tela, conexão ruim, e o teste
+mais importante — Modo Palco durante um culto de verdade.
+
+`style.css?v=9`.
+
+
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase

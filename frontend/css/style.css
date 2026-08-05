@@ -132,6 +132,11 @@ body {
     justify-content: space-between;
   }
   .user-info span { max-width: 70vw; }
+
+  /* Alvos de toque maiores no celular — abas, checkboxes e o "olho" da senha */
+  .tab-btn { padding: 0.55rem 1rem; font-size: 0.85rem; }
+  .instrumentos-checkboxes input[type="checkbox"] { width: 18px; height: 18px; }
+  .btn-olho { padding: 0.5rem 0.6rem; font-size: 1.15rem; }
 }
 
 .logo-circle {
@@ -471,8 +476,11 @@ body {
 
 .badge-confirmacao {
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   margin-left: 0.15rem;
+  padding: 0.35rem 0.4rem;
+  display: inline-block;
+  line-height: 1;
 }
 
 .btn:disabled {
@@ -690,7 +698,7 @@ textarea {
   border: 1px solid var(--input-borda);
   padding: 0.45rem 0.6rem;
   color: var(--branco);
-  font-size: 0.9rem;
+  font-size: 1rem; /* 16px — abaixo disso o Safari/iOS dá zoom sozinho ao focar o campo */
 }
 
 input:focus,
@@ -1236,8 +1244,9 @@ textarea {
   border: none;
   color: #e74c3c;
   cursor: pointer;
-  font-size: 0.85rem;
-  padding: 0 0.25rem;
+  font-size: 0.95rem;
+  padding: 0.3rem 0.5rem;
+  line-height: 1;
 }
 
 .btn-icone-remover:hover {
