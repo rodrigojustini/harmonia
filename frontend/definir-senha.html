@@ -8,13 +8,14 @@
 </head>
 <body style="background:#0d0d0d; min-height:100vh; display:flex; align-items:center; justify-content:center;">
 
-  <div style="max-width: 400px; width: 90%; margin: 2rem auto; padding: 2rem; background: #1a1a1a; border-radius: 1rem;">
+  <div style="max-width: 440px; width: 90%; margin: 2rem auto; padding: 2rem; background: #1a1a1a; border-radius: 1rem;">
     <div style="text-align: center; margin-bottom: 2rem;">
       <img src="assets/logo-h-160.png" alt="Harmonia" style="width:64px; height:64px; margin: 0 auto 1rem; display:block; filter: drop-shadow(0 0 10px rgba(212,162,76,0.5));" />
       <h1 style="margin: 0; color: #fff;">Harmonia</h1>
       <p style="color: #bbb; margin: 0.5rem 0 0;" id="subtitulo">Bem-vindo! Crie sua senha para acessar.</p>
     </div>
 
+    <!-- ETAPA 1: senha -->
     <form id="formSenha">
       <div class="field-group">
         <label for="novaSenha">Nova senha</label>
@@ -30,7 +31,45 @@
           <button type="button" class="btn-olho" data-alvo="confirmarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁️</button>
         </div>
       </div>
-      <button type="submit" class="btn primary" style="width: 100%;">Criar senha e entrar</button>
+      <button type="submit" class="btn primary" style="width: 100%;">Criar senha</button>
+    </form>
+
+    <!-- ETAPA 2: completar perfil (aparece depois que a senha é criada) -->
+    <form id="formPerfil" style="display:none;">
+      <p style="color:#bbb; font-size:0.85rem; margin-bottom:1rem;">
+        Quase lá! Completa seus dados pra facilitar a vida de quem monta a escala — seu nome, e-mail e função já vieram do convite.
+      </p>
+      <div class="field-group">
+        <label for="perfilAniversario">Data de nascimento</label>
+        <input id="perfilAniversario" type="date">
+      </div>
+      <div class="field-group">
+        <label for="perfilWhatsapp">WhatsApp</label>
+        <input id="perfilWhatsapp" type="text" placeholder="(83) 99999-9999">
+      </div>
+      <div class="field-group">
+        <label>Instrumentos</label>
+        <div class="instrumentos-checkboxes" id="perfilInstrumentosBox">
+          <label><input type="checkbox" value="Voz"> Voz</label>
+          <label><input type="checkbox" value="Violão"> Violão</label>
+          <label><input type="checkbox" value="Guitarra"> Guitarra</label>
+          <label><input type="checkbox" value="Baixo"> Baixo</label>
+          <label><input type="checkbox" value="Bateria"> Bateria</label>
+          <label><input type="checkbox" value="Teclado"> Teclado</label>
+          <label><input type="checkbox" value="Cajón"> Cajón</label>
+          <label><input type="checkbox" value="Som/Técnico"> Som/Técnico</label>
+        </div>
+      </div>
+      <div class="field-group">
+        <label for="perfilDisponibilidade">Disponibilidade</label>
+        <input id="perfilDisponibilidade" type="text" placeholder="Ex: Domingo manhã, Quinta noite">
+      </div>
+      <div class="field-group">
+        <label for="perfilBio">Biografia (opcional)</label>
+        <textarea id="perfilBio" rows="2" placeholder="Uma breve descrição..."></textarea>
+      </div>
+      <button type="submit" class="btn primary" style="width: 100%; margin-bottom:0.6rem;">Salvar e entrar</button>
+      <button type="button" id="btnPularPerfil" class="btn secondary" style="width: 100%;">Completar depois</button>
     </form>
 
     <div id="mensagem" style="margin-top: 1rem; padding: 0.5rem; border-radius: 0.5rem; display: none;"></div>
@@ -52,6 +91,9 @@
     });
 
     const msgEl = document.getElementById("mensagem");
+    const formSenha = document.getElementById("formSenha");
+    const formPerfil = document.getElementById("formPerfil");
+    const subtitulo = document.getElementById("subtitulo");
 
     function mostrarMensagem(texto, cor) {
       msgEl.style.display = "block";
@@ -60,17 +102,21 @@
       msgEl.textContent = texto;
     }
 
+    function irParaApp() {
+      window.location.href = "index.html";
+    }
+
     // supabase-js já captura a sessão do link do e-mail automaticamente
     // (detectSessionInUrl é o padrão). Só confirmamos que deu certo.
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         mostrarMensagem("Link inválido ou expirado. Peça um novo convite ao líder da sua equipe.", "#dc2626");
-        document.getElementById("formSenha").style.display = "none";
+        formSenha.style.display = "none";
       }
     })();
 
-    document.getElementById("formSenha").addEventListener("submit", async (e) => {
+    formSenha.addEventListener("submit", async (e) => {
       e.preventDefault();
       const senha = document.getElementById("novaSenha").value;
       const confirmar = document.getElementById("confirmarSenha").value;
@@ -92,9 +138,43 @@
         return;
       }
 
-      mostrarMensagem("Senha criada! Redirecionando...", "#059669");
-      setTimeout(() => { window.location.href = "index.html"; }, 1500);
+      // Senha criada — agora mostra a etapa de completar o perfil, em vez de já mandar pro app
+      msgEl.style.display = "none";
+      formSenha.style.display = "none";
+      formPerfil.style.display = "block";
+      subtitulo.textContent = "Só mais um passo — complete seu perfil.";
     });
+
+    formPerfil.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const aniversario = document.getElementById("perfilAniversario").value || null;
+      const whatsapp = document.getElementById("perfilWhatsapp").value.trim() || null;
+      const disponibilidade = document.getElementById("perfilDisponibilidade").value.trim() || null;
+      const bio = document.getElementById("perfilBio").value.trim() || null;
+      const instrumentos = Array.from(document.querySelectorAll("#perfilInstrumentosBox input:checked")).map((cb) => cb.value);
+
+      const botao = e.target.querySelector('button[type="submit"]');
+      botao.disabled = true;
+      botao.textContent = "Salvando...";
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { error } = await supabase.from("membros")
+          .update({ aniversario, whatsapp, disponibilidade, bio, instrumentos })
+          .eq("perfil_id", user.id);
+        if (error) throw error;
+
+        mostrarMensagem("Perfil salvo! Redirecionando...", "#059669");
+        setTimeout(irParaApp, 1200);
+      } catch (error) {
+        mostrarMensagem("Erro ao salvar perfil: " + error.message, "#dc2626");
+        botao.disabled = false;
+        botao.textContent = "Salvar e entrar";
+      }
+    });
+
+    document.getElementById("btnPularPerfil").addEventListener("click", irParaApp);
   </script>
 </body>
 </html>

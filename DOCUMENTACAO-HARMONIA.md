@@ -570,6 +570,54 @@ dá pra editar na aba Membros quando quiser.
 
 
 
+## 23. Sessão 05/08/2026 — Varredura geral de segurança/funcionalidades
+
+Auditoria completa a pedido do Rodrigo: revisão de código, `get_advisors` (segurança e
+performance) do Supabase, logs de produção (postgres, api, auth) das últimas ~100 requisições
+reais dele e da Jaise (desktop + Android).
+
+**🔴 Achado e corrigido — falha de segurança real (`sql/018`):** `registrar_historico()`
+podia ser chamada direto via RPC por qualquer usuário autenticado, sem checar se o
+`igreja_id` informado era realmente o dele — dava pra forjar entradas de histórico de
+qualquer igreja (justamente o oposto do propósito de um histórico confiável). Revogado
+`EXECUTE` de `anon`/`authenticated` nessa função e nas funções de trigger (só chamada
+interna continua funcionando — testado com insert/delete real de música, histórico
+registrou certinho).
+
+**🟢 100% das requisições reais auditadas com sucesso** — nenhum erro 4xx/5xx encontrado.
+
+**🟡 Achados de baixo impacto (advisors do Supabase, não bugs):** FKs sem índice em tabelas
+legadas já mortas, padrão de RLS `auth.uid()` reavaliado por linha (otimização só relevante
+em escala grande), policies de SELECT redundantes em algumas tabelas. Recomendação real:
+ativar "Leaked Password Protection" no Supabase Auth (Dashboard → Authentication → Policies)
+— não dá pra fazer via SQL, precisa ser no painel.
+
+---
+
+## 24. Sessão 05/08/2026 — Novo membro completa o próprio perfil ao entrar
+
+Rodrigo percebeu que a aba Aniversários sempre aparecia vazia — porque ninguém que entrava
+via convite preenchia aniversário/whatsapp/instrumentos, e o líder tinha que fazer isso na
+mão depois.
+
+**Banco (`sql/017`):** a função também não estava copiando `funcao` (que já vem certinho no
+convite) pro cadastro de membro criado automaticamente — corrigido, com backfill de quem já
+tinha ficado sem.
+
+**`definir-senha.html` virou um fluxo de 2 etapas:**
+1. Criar senha (como já era)
+2. **Nova etapa:** completar perfil — data de nascimento, WhatsApp, instrumentos (mesmas
+   opções do formulário de membro no app), disponibilidade, bio. Botão "Completar depois"
+   pra quem não quiser preencher agora (não trava o acesso)
+
+Salva direto na própria linha de `membros` (a policy `membro edita proprio cadastro`, já
+criada na Fase 1, permite isso: `perfil_id = auth.uid()`). Nome, e-mail e função continuam
+vindo prontos do convite — a pessoa só completa o que falta.
+
+---
+
+
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase
