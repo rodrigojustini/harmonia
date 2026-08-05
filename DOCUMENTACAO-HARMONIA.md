@@ -727,6 +727,32 @@ alguém esquecer.
 
 
 
+## 29. Sessão 06/08/2026 — Membro comum não conseguia editar o próprio perfil
+
+Bug real reportado pelo Rodrigo (testando como membro convidado): ao tentar completar o
+próprio perfil (foto, bio, etc.) na aba Membros, dava
+`Erro ao salvar membro: new row violates row-level security policy for table "membros"`.
+
+**Causa:** o formulário "Novo membro" ficava visível pra qualquer papel, mas só serve pra
+líder cadastrar gente nova (INSERT, restrito por RLS a admin/lider). Um membro comum sem
+estar em "modo edição" acabava tentando criar um cadastro novo em vez de editar o próprio —
+e não tinha nenhum botão "Editar meu perfil" em lugar nenhum. A RLS de auto-edição
+(`membro edita proprio cadastro`, UPDATE onde `perfil_id = auth.uid()`) já existia desde a
+Fase 1 — só faltava o caminho no frontend pra usar ela.
+
+**Correção (só frontend, sem migration):**
+- Card "Novo membro" agora só aparece de cara pra líder/admin
+- Todo card de membro na lista, se for o **próprio cadastro** da pessoa logada, ganha um
+  botão "Editar meu perfil" — mesmo pra quem não é líder
+- Ao entrar em modo edição, os campos **Status** e **Conta de login** somem quando quem
+  está editando não é líder — evita o membro se marcar inativo ou desvincular a própria
+  conta sem querer (RLS já permitiria tecnicamente, mas não faz sentido dar esse controle
+  pro próprio membro)
+
+`app.js?v=22`.
+
+
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase

@@ -428,7 +428,7 @@
       </div>
 
       <div class="grid-2">
-        <div class="card">
+        <div class="card" id="cardNovoMembro">
           <h3 id="tituloFormMembro">Novo membro</h3>
           <form id="formMembro">
             <input type="hidden" id="membroEditandoId" value="" />
@@ -512,7 +512,7 @@
               <input id="membroDisponibilidade" type="text" placeholder="Ex: Domingo manhã, Quinta noite" />
             </div>
 
-            <div class="field-group">
+            <div class="field-group" id="campoMembroStatus">
               <label for="membroStatus">Status</label>
               <select id="membroStatus">
                 <option value="true">Ativo</option>
@@ -520,7 +520,7 @@
               </select>
             </div>
 
-            <div class="field-group">
+            <div class="field-group" id="campoMembroPerfil">
               <label for="membroPerfil">Conta de login (opcional)</label>
               <select id="membroPerfil">
                 <option value="">Sem conta no app</option>
@@ -725,6 +725,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=21"></script>
+  <script src="js/app.js?v=22"></script>
 </body>
 </html>

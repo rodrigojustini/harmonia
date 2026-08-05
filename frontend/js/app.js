@@ -1285,11 +1285,20 @@ function limparFormMembro() {
   document.getElementById("btnSalvarMembro").textContent = "Salvar membro";
   document.getElementById("btnCancelarEdicaoMembro").style.display = "none";
   document.getElementById("membroFotoPreview").src = "assets/avatar-padrao.svg";
+  document.getElementById("campoMembroStatus").style.display = "block";
+  document.getElementById("campoMembroPerfil").style.display = "block";
   avatarSelecionado = null;
   document.querySelectorAll("#membroInstrumentosBox input[type=checkbox]").forEach((cb) => (cb.checked = false));
+
+  // Volta a esconder o card pra quem não é líder (só fica visível durante "Editar meu perfil")
+  const cardNovoMembro = document.getElementById("cardNovoMembro");
+  if (cardNovoMembro && !currentUser?.souLideranca) cardNovoMembro.style.display = "none";
 }
 
 function preencherFormMembroParaEdicao(m) {
+  const cardNovoMembro = document.getElementById("cardNovoMembro");
+  if (cardNovoMembro) cardNovoMembro.style.display = "block";
+
   document.getElementById("membroEditandoId").value = m.id;
   document.getElementById("membroNome").value = m.nome || "";
   document.getElementById("membroVoz").value = m.voz || "";
@@ -1303,6 +1312,12 @@ function preencherFormMembroParaEdicao(m) {
   document.getElementById("membroStatus").value = String(m.ativo !== false);
   document.getElementById("membroPerfil").value = m.perfil_id || "";
   document.getElementById("membroFotoPreview").src = m.foto_url || "assets/avatar-padrao.svg";
+
+  // Status e vínculo de conta são decisão de liderança — membro comum editando o
+  // próprio cadastro não deve mexer nisso (evita se marcar inativo sem querer, etc.)
+  const podeVerCamposDeLideranca = currentUser?.souLideranca;
+  document.getElementById("campoMembroStatus").style.display = podeVerCamposDeLideranca ? "block" : "none";
+  document.getElementById("campoMembroPerfil").style.display = podeVerCamposDeLideranca ? "block" : "none";
 
   const instrumentos = m.instrumentos || [];
   const outros = [];
@@ -1343,6 +1358,9 @@ async function enviarFotoMembro(membroId, file) {
 
 function initMembros() {
   loadMembros();
+
+  const cardNovoMembro = document.getElementById("cardNovoMembro");
+  if (cardNovoMembro) cardNovoMembro.style.display = currentUser?.souLideranca ? "block" : "none";
 
   const fotoInput = document.getElementById("membroFoto");
   fotoInput.addEventListener("change", () => {
@@ -1464,6 +1482,8 @@ function renderMembros() {
       if (m.bio) infoLinhas += `<div class="membro-info-linha">${m.bio}</div>`;
 
       let acoes = "";
+      const ehMeuProprioCadastro = m.perfil_id === currentUser.id;
+
       if (currentUser?.souLideranca) {
         acoes += `<button class="btn secondary" onclick='editarMembroPorId("${m.id}")'>Editar</button>`;
         acoes += `<button class="btn danger" onclick="excluirMembro('${m.id}', '${m.nome.replace(/'/g, "")}')">Excluir</button>`;
@@ -1476,6 +1496,8 @@ function renderMembros() {
             acoes += `<button class="btn success" onclick="tornarLiderMembro('${perfilVinculado.id}')">Tornar líder</button>`;
           }
         }
+      } else if (ehMeuProprioCadastro) {
+        acoes += `<button class="btn secondary" onclick='editarMembroPorId("${m.id}")'>Editar meu perfil</button>`;
       }
 
       card.innerHTML = `
