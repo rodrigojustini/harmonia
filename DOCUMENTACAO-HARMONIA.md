@@ -786,6 +786,41 @@ mais importante — Modo Palco durante um culto de verdade.
 
 
 
+## 31. Sessão 06/08/2026 — Auditoria pré-domingo: falha crítica de autenticação + Wake Lock automático
+
+Rodrigo decidiu pausar fases novas essa semana pra validar tudo de verdade, com teste real
+de Modo Palco no culto de domingo (~20-30 min de louvor). Pedido: mais uma rodada de
+auditoria de segurança antes disso.
+
+**🔴 CRÍTICO — encontrado e corrigido (`sql/020`):** `confirmar_presenca`,
+`excluir_membro` e `promover_lider` podiam ser chamadas **sem login nenhum**, direto na
+API REST do Supabase. Causa: em PL/pgSQL, quando `auth.uid()` é `null` (chamada anônima),
+comparações como `x <> auth.uid()` viram `NULL` em vez de `false` — e um
+`if null then raise exception` **não dispara**, simplesmente pula o bloco. As checagens de
+permissão dessas três funções dependiam só desse tipo de comparação, sem uma trava
+explícita de "precisa estar logado" no início. **Testado e confirmado:** antes da correção,
+`promover_lider('qualquer-uuid')` chamado sem sessão autenticada promovia a pessoa a líder.
+Corrigido adicionando `if auth.uid() is null then raise exception 'Não autenticado'` como
+primeira linha de cada função. Testado de novo depois da correção: as três agora rejeitam
+corretamente chamada anônima. `remover_lideranca` era segura por acidente (o if/else final
+cai em ELSE quando a condição é NULL) mas ganhou a mesma trava por consistência.
+
+**🟡 Risco real de UX pro domingo, corrigido:** o botão "Manter Tela Ligada" ficava só em
+Config, separado do Modo Palco — fácil de esquecer de ativar antes do culto começar, e a
+tela apagaria no meio do louvor. Agora o Wake Lock **liga sozinho** assim que a aba Modo
+Palco é aberta (e continua se reativando sozinho quando o app volta a ficar visível, como
+já fazia antes). Pra não interromper a tela do louvor com notificação toda vez que
+reativa sozinho, só mostra o toast de confirmação quando é ativado manualmente pelo botão
+em Config — reativação automática fica silenciosa.
+
+**Verificado, sem problema:** lista completa de funções do banco conferida uma a uma;
+lógica de auto-scroll da cifra já trata culto sem música corretamente; cronômetro e
+navegação Anterior/Próxima sem dependência de rede após o carregamento inicial.
+
+`app.js?v=23`.
+
+
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase

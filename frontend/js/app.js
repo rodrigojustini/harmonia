@@ -654,6 +654,7 @@ function initTabs() {
       }
       if (tab === "modopalco") {
         popularSelectPalco();
+        requestWakeLock(true); // liga sozinho, sem toast — não depende de lembrar de ativar em Config antes
       }
       if (tab === "trocas") {
         carregarTrocasSeNecessario();
@@ -1943,20 +1944,20 @@ function initMapaIndividual() {
 // ====== CONFIG: WAKE LOCK + RESET ======
 let wakeLock = null;
 
-async function requestWakeLock() {
+async function requestWakeLock(silencioso = false) {
   try {
     if ("wakeLock" in navigator) {
       wakeLock = await navigator.wakeLock.request("screen");
       wakeLock.addEventListener("release", () => {
         console.log("Wake Lock liberado");
       });
-      showNotification("Tentando manter a tela ligada enquanto o app estiver aberto.", "success");
-    } else {
+      if (!silencioso) showNotification("Tentando manter a tela ligada enquanto o app estiver aberto.", "success");
+    } else if (!silencioso) {
       showNotification("Este navegador/dispositivo não suporta manter a tela ligada.", "error");
     }
   } catch (err) {
     console.error(err);
-    showNotification("Não foi possível ativar o Wake Lock: " + err.message, "error");
+    if (!silencioso) showNotification("Não foi possível ativar o Wake Lock: " + err.message, "error");
   }
 }
 
@@ -2027,11 +2028,11 @@ function initConfig() {
   }
 
   const btnWakeLock = document.getElementById("btnWakeLock");
-  btnWakeLock.addEventListener("click", requestWakeLock);
+  btnWakeLock.addEventListener("click", () => requestWakeLock(false));
 
   document.addEventListener("visibilitychange", () => {
     if (wakeLock !== null && document.visibilityState === "visible") {
-      requestWakeLock();
+      requestWakeLock(true);
     }
   });
 
