@@ -542,10 +542,35 @@ viraram `showNotification()`.
 
 ---
 
+## 22. Sessão 04/08/2026 (tarde) — Hotfix crítico: convite não criava cadastro de membro
+
+Reportado por Rodrigo: convidou alguém, a pessoa aceitou e criou conta, mas não aparecia na
+aba Membros.
+
+**Causa:** `membros` (o cadastro/perfil social usado na aba Membros) e `perfis` (a conta de
+login) sempre foram tabelas separadas, e **nenhum dos três jeitos de criar conta** — convite
+por e-mail (`convidar-membro`), criar igreja (virar admin), ou entrar com código de convite —
+criava a linha correspondente em `membros`. Conferido no banco: as 5 contas reais existentes,
+**incluindo a própria admin**, nunca tiveram cadastro de membro. A tabela estava vazia.
+
+**Correção (só banco, sem deploy — `sql/016`):**
+- Trigger `criar_membro_para_novo_perfil` em `perfis` — toda conta nova agora cria
+  automaticamente o cadastro de membro correspondente. Se o líder já tinha criado
+  manualmente um cadastro com o mesmo nome (sem conta vinculada), o trigger vincula em vez de
+  duplicar
+- Backfill retroativo: as 5 contas existentes ganharam cadastro de membro na hora
+
+Nomes vieram como digitados no cadastro (ex: "FRANCISCO" em maiúsculo) — puramente estético,
+dá pra editar na aba Membros quando quiser.
+
+---
+
+
+
+
+
+
 ## 9. Workflow padrão (repetindo o que já vale)
-
-
-
 
 1. Você pede a próxima fase
 2. Eu edito o código, aplico migrations direto no Supabase (quando aplicável) e gero um zip com
