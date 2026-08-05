@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Definir senha - Harmonia</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body style="background:#0d0d0d; min-height:100vh; display:flex; align-items:center; justify-content:center;">
 
   <div style="max-width: 400px; width: 90%; margin: 2rem auto; padding: 2rem; background: #1a1a1a; border-radius: 1rem;">
     <div style="text-align: center; margin-bottom: 2rem;">
-      <div class="logo-circle" style="margin: 0 auto 1rem;">H</div>
+      <img src="assets/logo-h-160.png" alt="Harmonia" style="width:64px; height:64px; margin: 0 auto 1rem; display:block; filter: drop-shadow(0 0 10px rgba(212,162,76,0.5));" />
       <h1 style="margin: 0; color: #fff;">Harmonia</h1>
       <p style="color: #bbb; margin: 0.5rem 0 0;" id="subtitulo">Bem-vindo! Crie sua senha para acessar.</p>
     </div>
@@ -18,11 +18,17 @@
     <form id="formSenha">
       <div class="field-group">
         <label for="novaSenha">Nova senha</label>
-        <input id="novaSenha" type="password" required minlength="6">
+        <div class="campo-senha">
+          <input id="novaSenha" type="password" required minlength="6">
+          <button type="button" class="btn-olho" data-alvo="novaSenha" title="Mostrar senha" aria-label="Mostrar senha">👁️</button>
+        </div>
       </div>
       <div class="field-group">
         <label for="confirmarSenha">Confirmar senha</label>
-        <input id="confirmarSenha" type="password" required minlength="6">
+        <div class="campo-senha">
+          <input id="confirmarSenha" type="password" required minlength="6">
+          <button type="button" class="btn-olho" data-alvo="confirmarSenha" title="Mostrar senha" aria-label="Mostrar senha">👁️</button>
+        </div>
       </div>
       <button type="submit" class="btn primary" style="width: 100%;">Criar senha e entrar</button>
     </form>
@@ -33,6 +39,18 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js"></script>
   <script>
+    // Botão de olho (mostrar/ocultar senha) — mesma lógica usada no app principal
+    document.querySelectorAll(".btn-olho").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const input = document.getElementById(btn.dataset.alvo);
+        const vaiMostrar = input.type === "password";
+        input.type = vaiMostrar ? "text" : "password";
+        btn.textContent = vaiMostrar ? "🙈" : "👁️";
+        btn.title = vaiMostrar ? "Ocultar senha" : "Mostrar senha";
+        btn.setAttribute("aria-label", btn.title);
+      });
+    });
+
     const msgEl = document.getElementById("mensagem");
 
     function mostrarMensagem(texto, cor) {
@@ -59,6 +77,10 @@
 
       if (senha !== confirmar) {
         mostrarMensagem("As senhas não coincidem.", "#dc2626");
+        const campoConfirmar = document.getElementById("confirmarSenha");
+        campoConfirmar.classList.add("campo-erro", "campo-shake");
+        campoConfirmar.addEventListener("animationend", () => campoConfirmar.classList.remove("campo-shake"), { once: true });
+        campoConfirmar.addEventListener("input", () => campoConfirmar.classList.remove("campo-erro"), { once: true });
         return;
       }
 

@@ -159,15 +159,16 @@ async function apiCall(endpoint, options = {}) {
     if (path === "/musicas" && method === "GET") {
       const { data, error } = await supabase.from("musicas").select("*").order("criado_em");
       if (error) throw error;
-      return data.map(m => ({ id: m.id, titulo: m.titulo, tomOriginal: m.tom_original, link: m.link, observacoes: m.observacoes, cifra: m.cifra, bpm: m.bpm }));
+      return data.map(m => ({ id: m.id, titulo: m.titulo, tomOriginal: m.tom_original, link: m.link, observacoes: m.observacoes, cifra: m.cifra, bpm: m.bpm, autor: m.autor, categoria: m.categoria, tags: m.tags || [], vocalistaId: m.vocalista_id }));
     }
     if (path === "/musicas" && method === "POST") {
       const { data, error } = await supabase.from("musicas").insert({
         igreja_id: currentUser.igreja.id, titulo: body.titulo, tom_original: body.tomOriginal,
         link: body.link, observacoes: body.observacoes, cifra: body.cifra, bpm: body.bpm,
+        autor: body.autor, categoria: body.categoria, tags: body.tags || [], vocalista_id: body.vocalistaId || null,
       }).select().single();
       if (error) throw error;
-      return { id: data.id, titulo: data.titulo, tomOriginal: data.tom_original, link: data.link, observacoes: data.observacoes, cifra: data.cifra, bpm: data.bpm };
+      return { id: data.id, titulo: data.titulo, tomOriginal: data.tom_original, link: data.link, observacoes: data.observacoes, cifra: data.cifra, bpm: data.bpm, autor: data.autor, categoria: data.categoria, tags: data.tags || [], vocalistaId: data.vocalista_id };
     }
 
     // ---- MEMBROS ----
@@ -364,6 +365,23 @@ async function comFeedbackDeCarregamento(botao, textoCarregando, acaoAsync) {
 }
 
 // ====== INTERFACE DE LOGIN ======
+// Botão de "olho" nos campos de senha — funciona em qualquer tela que use a classe .btn-olho
+function initTogglesSenha(escopo = document) {
+  escopo.querySelectorAll(".btn-olho").forEach((btn) => {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = "1";
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.alvo);
+      if (!input) return;
+      const vaiMostrar = input.type === "password";
+      input.type = vaiMostrar ? "text" : "password";
+      btn.textContent = vaiMostrar ? "🙈" : "👁️";
+      btn.title = vaiMostrar ? "Ocultar senha" : "Mostrar senha";
+      btn.setAttribute("aria-label", btn.title);
+    });
+  });
+}
+
 function showLoginForm() {
   const app = document.querySelector('.app-main');
   const header = document.querySelector('.app-header');
@@ -385,7 +403,10 @@ function showLoginForm() {
         </div>
         <div class="field-group">
           <label for="loginPassword">Senha</label>
-          <input id="loginPassword" type="password" required>
+          <div class="campo-senha">
+            <input id="loginPassword" type="password" required>
+            <button type="button" class="btn-olho" data-alvo="loginPassword" title="Mostrar senha" aria-label="Mostrar senha">👁️</button>
+          </div>
         </div>
         <button type="submit" class="btn primary" style="width: 100%; margin-bottom: 1rem;">Entrar</button>
       </form>
@@ -408,7 +429,10 @@ function showLoginForm() {
           </div>
           <div class="field-group">
             <label for="registerPassword">Senha</label>
-            <input id="registerPassword" type="password" required minlength="6">
+            <div class="campo-senha">
+              <input id="registerPassword" type="password" required minlength="6">
+              <button type="button" class="btn-olho" data-alvo="registerPassword" title="Mostrar senha" aria-label="Mostrar senha">👁️</button>
+            </div>
           </div>
           <div class="field-group">
             <label style="display:block; margin-bottom:0.5rem;">Sua igreja</label>
@@ -435,6 +459,7 @@ function showLoginForm() {
   // Event listeners
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
   document.getElementById('registerFormElement').addEventListener('submit', handleRegister);
+  initTogglesSenha();
   document.getElementById('showRegister').addEventListener('click', () => {
     document.getElementById('registerForm').style.display = 'block';
     document.getElementById('showRegister').style.display = 'none';
@@ -476,7 +501,20 @@ async function handleLogin(e) {
     window.location.reload();
   } catch (error) {
     messageEl.style.background = '#dc2626';
-    messageEl.textContent = error.message;
+    const senhaInput = document.getElementById('loginPassword');
+    const ehCredencialErrada = error.message === "E-mail ou senha incorretos.";
+    messageEl.textContent = ehCredencialErrada
+      ? "Senha incorreta. Verifique seus dados e tente novamente."
+      : error.message;
+
+    if (ehCredencialErrada && senhaInput) {
+      senhaInput.classList.add('campo-erro', 'campo-shake');
+      senhaInput.addEventListener('animationend', () => senhaInput.classList.remove('campo-shake'), { once: true });
+      senhaInput.addEventListener('input', () => senhaInput.classList.remove('campo-erro'), { once: true });
+      senhaInput.focus();
+    }
+    // O e-mail NUNCA é apagado — só a senha some se der erro, pra tentar de novo é só digitar a senha
+
     if (botao) { botao.disabled = false; botao.textContent = 'Entrar'; }
   }
 }
@@ -682,19 +720,33 @@ async function loadMusicas() {
   }
 }
 
+let filtroMusicasTexto = "";
+
 function initMusicas() {
   loadMusicas();
 
   const cardNova = document.getElementById("cardNovaMusica");
   if (cardNova) cardNova.style.display = currentUser?.souLideranca ? "block" : "none";
 
+  const selectVocalista = document.getElementById("musicaVocalista");
+  if (selectVocalista) popularSelectVocalista();
+
+  document.getElementById("musicasBusca")?.addEventListener("input", (e) => {
+    filtroMusicasTexto = e.target.value.trim().toLowerCase();
+    renderMusicas();
+  });
+
   const form = document.getElementById("formMusica");
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const titulo = document.getElementById("musicaTitulo").value.trim();
+    const autor = document.getElementById("musicaAutor").value.trim();
     const tom = document.getElementById("musicaTom").value.trim();
     const bpm = document.getElementById("musicaBpm").value ? Number(document.getElementById("musicaBpm").value) : null;
+    const categoria = document.getElementById("musicaCategoria").value;
+    const tags = document.getElementById("musicaTags").value.split(",").map((t) => t.trim()).filter(Boolean);
+    const vocalistaId = document.getElementById("musicaVocalista").value || null;
     const link = document.getElementById("musicaLink").value.trim();
     const cifra = document.getElementById("musicaCifra").value;
     const obs = document.getElementById("musicaObs").value.trim();
@@ -714,8 +766,12 @@ function initMusicas() {
         method: "POST",
         body: JSON.stringify({
           titulo,
+          autor,
           tomOriginal: tom,
           bpm,
+          categoria,
+          tags,
+          vocalistaId,
           link,
           observacoes: obs,
           cifra,
@@ -745,18 +801,37 @@ function renderMusicas() {
     return;
   }
 
-  musicas
+  const filtradas = musicas.filter((m) => {
+    if (!filtroMusicasTexto) return true;
+    const vocalista = m.vocalistaId ? perfisDaIgreja.find((p) => p.id === m.vocalistaId)?.nome || "" : "";
+    const alvo = [m.titulo, m.autor, m.tomOriginal, m.categoria, (m.tags || []).join(" "), vocalista]
+      .filter(Boolean).join(" ").toLowerCase();
+    return alvo.includes(filtroMusicasTexto);
+  });
+
+  if (filtradas.length === 0) {
+    listaEl.innerHTML =
+      "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhuma música encontrada.</p>";
+    return;
+  }
+
+  filtradas
     .slice()
     .sort((a, b) => a.titulo.localeCompare(b.titulo))
     .forEach((m) => {
       const item = document.createElement("div");
       item.className = "list-item";
 
+      const vocalista = m.vocalistaId ? perfisDaIgreja.find((p) => p.id === m.vocalistaId)?.nome : null;
+      const tags = (m.tags || []).map((t) => `<span class="membro-tag">${t}</span>`).join("");
+
       const main = document.createElement("div");
       main.className = "list-item-main";
       main.innerHTML = `
         <strong>${m.titulo}</strong>
-        <span>Tom: ${m.tomOriginal || "-"}</span>
+        <span>${[m.autor, m.tomOriginal ? `Tom: ${m.tomOriginal}` : null, m.categoria].filter(Boolean).join(" • ") || "-"}</span>
+        ${vocalista ? `<span style="font-size:0.75rem;color:var(--texto-secundario);">🎤 ${vocalista}</span>` : ""}
+        ${tags ? `<div class="membro-tags" style="margin-top:0.2rem;">${tags}</div>` : ""}
         ${
           m.link
             ? `<a href="${m.link}" target="_blank" style="font-size:0.75rem;color:#2ecc71;">Abrir link</a>`
@@ -929,7 +1004,10 @@ function initMeuRepertorio() {
 
     const editandoId = document.getElementById("repertorioEditandoId").value || null;
     const titulo = document.getElementById("repertorioTitulo").value.trim();
+    const autor = document.getElementById("repertorioAutor").value.trim();
     const tom = document.getElementById("repertorioTom").value.trim();
+    const categoria = document.getElementById("repertorioCategoria").value;
+    const tags = document.getElementById("repertorioTags").value.split(",").map((t) => t.trim()).filter(Boolean);
     const link = document.getElementById("repertorioLink").value.trim();
     const cifra = document.getElementById("repertorioCifra").value;
     const obs = document.getElementById("repertorioObs").value.trim();
@@ -939,7 +1017,10 @@ function initMeuRepertorio() {
       return;
     }
 
-    const payload = { titulo, tom_original: tom || null, link: link || null, cifra: cifra || null, observacoes: obs || null };
+    const payload = {
+      titulo, autor: autor || null, tom_original: tom || null, categoria: categoria || null, tags,
+      link: link || null, cifra: cifra || null, observacoes: obs || null,
+    };
 
     try {
       if (editandoId) {
@@ -967,14 +1048,15 @@ function renderRepertorioPessoal() {
 
   const filtradas = repertorioPessoal.filter((m) => {
     if (!filtroRepertorioTexto) return true;
-    return m.titulo.toLowerCase().includes(filtroRepertorioTexto) ||
-      (m.tom_original || "").toLowerCase().includes(filtroRepertorioTexto);
+    const alvo = [m.titulo, m.autor, m.tom_original, m.categoria, (m.tags || []).join(" ")]
+      .filter(Boolean).join(" ").toLowerCase();
+    return alvo.includes(filtroRepertorioTexto);
   });
 
   if (filtradas.length === 0) {
     listaEl.innerHTML = repertorioPessoal.length === 0
       ? "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Sua biblioteca está vazia. Adicione a primeira música ao lado.</p>"
-      : "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhuma música encontrada pra essa busca.</p>";
+      : "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhuma música encontrada.</p>";
     return;
   }
 
@@ -985,11 +1067,14 @@ function renderRepertorioPessoal() {
       const item = document.createElement("div");
       item.className = "list-item";
 
+      const tags = (m.tags || []).map((t) => `<span class="membro-tag">${t}</span>`).join("");
+
       const main = document.createElement("div");
       main.className = "list-item-main";
       main.innerHTML = `
         <strong>${m.titulo}</strong>
-        <span>Tom: ${m.tom_original || "-"}</span>
+        <span>${[m.autor, m.tom_original ? `Tom: ${m.tom_original}` : null, m.categoria].filter(Boolean).join(" • ") || "-"}</span>
+        ${tags ? `<div class="membro-tags" style="margin-top:0.2rem;">${tags}</div>` : ""}
         ${m.link ? `<a href="${m.link}" target="_blank" style="font-size:0.75rem;color:#2ecc71;">Abrir link</a>` : ""}
       `;
 
@@ -1010,7 +1095,10 @@ function renderRepertorioPessoal() {
         e.stopPropagation();
         document.getElementById("repertorioEditandoId").value = m.id;
         document.getElementById("repertorioTitulo").value = m.titulo;
+        document.getElementById("repertorioAutor").value = m.autor || "";
         document.getElementById("repertorioTom").value = m.tom_original || "";
+        document.getElementById("repertorioCategoria").value = m.categoria || "";
+        document.getElementById("repertorioTags").value = (m.tags || []).join(", ");
         document.getElementById("repertorioLink").value = m.link || "";
         document.getElementById("repertorioCifra").value = m.cifra || "";
         document.getElementById("repertorioObs").value = m.observacoes || "";
@@ -1107,9 +1195,20 @@ async function carregarPerfisDaIgreja() {
   if (!error) perfisDaIgreja = data;
 }
 
+function popularSelectVocalista() {
+  const selectVocalista = document.getElementById("musicaVocalista");
+  if (selectVocalista && perfisDaIgreja.length) {
+    const valorAtual = selectVocalista.value;
+    selectVocalista.innerHTML = `<option value="">Sem vocalista definido</option>` +
+      perfisDaIgreja.map((p) => `<option value="${p.id}">${p.nome}</option>`).join("");
+    selectVocalista.value = valorAtual;
+  }
+}
+
 async function loadMembros() {
   try {
     await carregarPerfisDaIgreja();
+    popularSelectVocalista();
     const { data, error } = await supabase.from("membros").select("*").order("nome");
     if (error) throw error;
     membros = data;

@@ -5,7 +5,7 @@
   <title>Harmonia - Ministério de Louvor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
-  <link rel="stylesheet" href="css/style.css?v=7" />
+  <link rel="stylesheet" href="css/style.css?v=8" />
   <script>
     (function () {
       var salvo = localStorage.getItem("harmonia_tema");
@@ -220,12 +220,38 @@
               <input id="musicaTitulo" type="text" required />
             </div>
             <div class="field-group">
+              <label for="musicaAutor">Autor / Compositor</label>
+              <input id="musicaAutor" type="text" placeholder="Ex: Gabriel Guedes" />
+            </div>
+            <div class="field-group">
               <label for="musicaTom">Tom original</label>
               <input id="musicaTom" type="text" placeholder="Ex: G, A, F#..." />
             </div>
             <div class="field-group">
               <label for="musicaBpm">BPM (opcional, usado no Modo Palco)</label>
               <input id="musicaBpm" type="number" min="30" max="300" placeholder="Ex: 90" />
+            </div>
+            <div class="field-group">
+              <label for="musicaCategoria">Categoria</label>
+              <select id="musicaCategoria">
+                <option value="">Selecione</option>
+                <option value="Adoração">Adoração</option>
+                <option value="Celebração">Celebração</option>
+                <option value="Ceia">Ceia</option>
+                <option value="Ministração">Ministração</option>
+                <option value="Ofertório">Ofertório</option>
+                <option value="Outra">Outra</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="musicaTags">Tags</label>
+              <input id="musicaTags" type="text" placeholder="Separe por vírgula: rápida, natal, infantil..." />
+            </div>
+            <div class="field-group">
+              <label for="musicaVocalista">Vocalista responsável</label>
+              <select id="musicaVocalista">
+                <option value="">Sem vocalista definido</option>
+              </select>
             </div>
             <div class="field-group">
               <label for="musicaLink">Link (YouTube / Cifra)</label>
@@ -246,6 +272,10 @@
 
         <div class="card">
           <h3>Lista de músicas</h3>
+          <div class="campo-busca">
+            <span class="campo-busca-icone">🔍</span>
+            <input id="musicasBusca" type="text" placeholder="Pesquisar por nome, autor, tom, categoria, tag ou vocalista..." />
+          </div>
           <div id="listaMusicas" class="list"></div>
         </div>
       </div>
@@ -273,8 +303,28 @@
               <input id="repertorioTitulo" type="text" required />
             </div>
             <div class="field-group">
+              <label for="repertorioAutor">Autor / Compositor</label>
+              <input id="repertorioAutor" type="text" placeholder="Ex: Gabriel Guedes" />
+            </div>
+            <div class="field-group">
               <label for="repertorioTom">Tom original</label>
               <input id="repertorioTom" type="text" placeholder="Ex: G, A, F#..." />
+            </div>
+            <div class="field-group">
+              <label for="repertorioCategoria">Categoria</label>
+              <select id="repertorioCategoria">
+                <option value="">Selecione</option>
+                <option value="Adoração">Adoração</option>
+                <option value="Celebração">Celebração</option>
+                <option value="Ceia">Ceia</option>
+                <option value="Ministração">Ministração</option>
+                <option value="Ofertório">Ofertório</option>
+                <option value="Outra">Outra</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="repertorioTags">Tags</label>
+              <input id="repertorioTags" type="text" placeholder="Separe por vírgula: rápida, natal, infantil..." />
             </div>
             <div class="field-group">
               <label for="repertorioLink">Link (YouTube / Cifra)</label>
@@ -297,7 +347,10 @@
 
         <div class="card">
           <h3>Minhas músicas</h3>
-          <input id="repertorioBusca" type="text" placeholder="Pesquisar por título ou tom..." style="margin-bottom:0.6rem;" />
+          <div class="campo-busca">
+            <span class="campo-busca-icone">🔍</span>
+            <input id="repertorioBusca" type="text" placeholder="Pesquisar por nome, autor, tom, categoria ou tag..." />
+          </div>
           <div id="listaRepertorioPessoal" class="list"></div>
         </div>
       </div>
@@ -648,6 +701,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=16"></script>
+  <script src="js/app.js?v=17"></script>
 </body>
 </html>

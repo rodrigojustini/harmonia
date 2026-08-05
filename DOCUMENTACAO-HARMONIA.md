@@ -479,7 +479,43 @@ de busca em Meu Repertório (busca já é 100% client-side, sem consulta por tec
 
 ---
 
+## 20. Sessão 04/08/2026 (tarde) — Melhorias de usabilidade: busca, olho da senha, erro de login
+
+**Banco (já aplicado — `sql/015`):** `musicas` e `repertorio_pessoal` ganharam `autor`,
+`categoria`, `tags text[]`; `musicas` também ganhou `vocalista_id` (FK pra `perfis`).
+
+**Pesquisa de músicas:**
+- Barra de busca com ícone de lupa, fixa no topo (`position: sticky`), nas telas Músicas e
+  Meu Repertório — filtra em tempo real (sem botão) por nome, autor, tom, categoria, tags e
+  vocalista responsável
+- Formulários de música (oficial e pessoal) ganharam campos Autor, Categoria (select fixo:
+  Adoração/Celebração/Ceia/Ministração/Ofertório/Outra), Tags (texto separado por vírgula) e,
+  na oficial, Vocalista responsável (dropdown dos perfis da igreja)
+- Mensagens diferentes pra "biblioteca vazia" vs. "busca sem resultado" ("Nenhuma música
+  encontrada.")
+- Corrigido um risco de corrida: o dropdown de vocalista podia carregar vazio se abrisse antes
+  dos perfis da igreja terminarem de carregar — agora ele se atualiza sozinho assim que os
+  perfis chegam (`popularSelectVocalista()`, chamado de dentro de `loadMembros()`)
+
+**Botão de mostrar/ocultar senha:**
+- Padrão reutilizável (`.btn-olho` + `initTogglesSenha()`) com ícone 👁️/🙈, tooltip acessível
+  ("Mostrar senha" / "Ocultar senha")
+- Aplicado em Login, Cadastro e na página `definir-senha.html` (que também ganhou a logo nova
+  — ainda estava com o círculo "H" antigo, esquecido desde a Fase 1)
+
+**Erro de login mais claro:**
+- Mensagem exata: "Senha incorreta. Verifique seus dados e tente novamente."
+- Campo de senha fica com borda vermelha + animação de shake (`@keyframes campoShake`)
+- E-mail nunca é apagado automaticamente — só a senha, pra tentar de novo sem redigitar tudo
+- Mesmo padrão de erro (borda vermelha + shake) aplicado em "as senhas não coincidem" na tela
+  de definir senha
+
+`style.css?v=8`, `app.js?v=17`, `definir-senha.html` atualizado.
+
+---
+
 ## 9. Workflow padrão (repetindo o que já vale)
+
 
 
 1. Você pede a próxima fase
