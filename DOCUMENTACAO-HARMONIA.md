@@ -618,6 +618,26 @@ vindo prontos do convite — a pessoa só completa o que falta.
 
 
 
+## 25. Sessão 05/08/2026 — Editar e excluir culto
+
+Faltava dar pro líder corrigir um culto salvo errado, ou excluir de vez.
+
+- Botões **Editar** e **Excluir** nos cards de "Cultos criados" (só aparecem pra líder/admin,
+  igual o resto do app)
+- Editar reaproveita o mesmo formulário de criar (troca pra modo edição, com "Cancelar
+  edição"), já vem com data/nome/músicas pré-marcadas
+- Excluir usa o modal de confirmação (`confirmarAcao`), avisando que o mapa de músicas some
+  junto
+- Conferido no banco antes de implementar: `culto_musicas` e `mapas_individuais` têm
+  `ON DELETE CASCADE` pra `cultos` — excluir um culto não deixa registro órfão pra trás,
+  não precisou de migration
+
+`app.js?v=19`.
+
+---
+
+
+
 ## 9. Workflow padrão (repetindo o que já vale)
 
 1. Você pede a próxima fase

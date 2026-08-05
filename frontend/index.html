@@ -370,8 +370,9 @@
 
       <div class="grid-2">
         <div class="card" id="cardNovoCulto">
-          <h3>Novo culto</h3>
+          <h3 id="tituloFormCulto">Novo culto</h3>
           <form id="formCulto">
+            <input type="hidden" id="cultoEditandoId" value="" />
             <div class="field-group">
               <label for="cultoData">Data</label>
               <input id="cultoData" type="date" required />
@@ -385,7 +386,10 @@
               <select id="cultoMusicas" multiple size="6"></select>
               <small>Segure Ctrl (ou toque) para selecionar várias músicas.</small>
             </div>
-            <button class="btn primary" type="submit" id="btnSalvarCulto">Criar culto / mapa</button>
+            <div class="modal-actions" style="justify-content:flex-start; gap:0.5rem;">
+              <button class="btn primary" type="submit" id="btnSalvarCulto">Criar culto / mapa</button>
+              <button class="btn secondary" type="button" id="btnCancelarEdicaoCulto" style="display:none;">Cancelar edição</button>
+            </div>
           </form>
         </div>
 
@@ -713,6 +717,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=18"></script>
+  <script src="js/app.js?v=19"></script>
 </body>
 </html>
