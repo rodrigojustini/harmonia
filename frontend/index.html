@@ -377,8 +377,18 @@
       <div class="grid-2">
         <div class="card" id="cardNovoCulto">
           <h3 id="tituloFormCulto">Novo culto</h3>
+          <p id="avisoCultoPessoal" style="font-size:0.78rem; color:var(--texto-secundario); margin-top:-0.3rem; margin-bottom:0.6rem; display:none;">
+            Você não é liderança, então este culto/mapa será <strong>só seu</strong> — não aparece pra mais ninguém da igreja, é sua autonomia pessoal.
+          </p>
           <form id="formCulto">
             <input type="hidden" id="cultoEditandoId" value="" />
+            <div class="field-group" id="grupoCultoPessoal" style="display:none;">
+              <label for="cultoPessoal">Tipo</label>
+              <select id="cultoPessoal">
+                <option value="false">Culto oficial da igreja (todo mundo vê)</option>
+                <option value="true">Meu culto pessoal (só eu vejo)</option>
+              </select>
+            </div>
             <div class="field-group">
               <label for="cultoData">Data</label>
               <input id="cultoData" type="date" required />
@@ -400,8 +410,10 @@
         </div>
 
         <div class="card">
-          <h3>Cultos criados</h3>
+          <h3>Cultos da igreja</h3>
           <div id="listaCultos" class="list"></div>
+          <h3 style="margin-top:1rem;">Meus cultos pessoais</h3>
+          <div id="listaCultosPessoais" class="list"></div>
         </div>
       </div>
 

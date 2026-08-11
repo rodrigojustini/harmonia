@@ -192,11 +192,18 @@ async function apiCall(endpoint, options = {}) {
     if (path === "/cultos" && method === "GET") {
       const { data, error } = await supabase.from("cultos").select("*, culto_musicas(musica_id, ordem)").order("data", { ascending: false });
       if (error) throw error;
-      return data.map(c => ({ id: c.id, data: c.data, nome: c.nome, shareSlug: c.share_slug, musicaIds: c.culto_musicas.map(cm => cm.musica_id) }));
+      return data.map(c => ({
+        id: c.id, data: c.data, nome: c.nome, shareSlug: c.share_slug,
+        donoId: c.dono_id, ehPessoal: !!c.dono_id,
+        musicaIds: c.culto_musicas.map(cm => cm.musica_id),
+      }));
     }
     if (path === "/cultos" && method === "POST") {
+      // Culto oficial (dono_id null) só se for liderança; senão é sempre pessoal (dono_id = eu).
+      const donoId = currentUser.souLideranca && !body.pessoal ? null : currentUser.id;
       const { data: culto, error } = await supabase.from("cultos").insert({
         igreja_id: currentUser.igreja.id, data: body.data, nome: body.nome, criado_por: currentUser.id,
+        dono_id: donoId,
       }).select().single();
       if (error) throw error;
       if (body.musicaIds?.length) {
@@ -1679,8 +1686,20 @@ function limparFormCulto() {
 }
 
 function initCultos() {
+  // Autonomia: qualquer membro logado pode montar seu próprio culto/mapa.
+  // Só liderança escolhe entre "oficial da igreja" x "pessoal"; membro comum sempre cria pessoal.
   const cardNovo = document.getElementById("cardNovoCulto");
-  if (cardNovo) cardNovo.style.display = currentUser?.souLideranca ? "block" : "none";
+  if (cardNovo) cardNovo.style.display = "block";
+
+  const avisoPessoal = document.getElementById("avisoCultoPessoal");
+  const grupoPessoal = document.getElementById("grupoCultoPessoal");
+  if (currentUser?.souLideranca) {
+    if (grupoPessoal) grupoPessoal.style.display = "block";
+    if (avisoPessoal) avisoPessoal.style.display = "none";
+  } else {
+    if (grupoPessoal) grupoPessoal.style.display = "none";
+    if (avisoPessoal) avisoPessoal.style.display = "block";
+  }
 
   document.getElementById("btnCancelarEdicaoCulto").addEventListener("click", limparFormCulto);
 
@@ -1692,6 +1711,9 @@ function initCultos() {
     const data = document.getElementById("cultoData").value;
     const nome = document.getElementById("cultoNome").value.trim();
     const select = document.getElementById("cultoMusicas");
+    const seletorPessoal = document.getElementById("cultoPessoal");
+    // Liderança escolhe no seletor; membro comum sempre cria pessoal (true por padrão).
+    const pessoal = currentUser?.souLideranca ? seletorPessoal?.value === "true" : true;
 
     if (!data || !nome) {
       showNotification("Informe data e nome do culto.", "error");
@@ -1721,7 +1743,7 @@ function initCultos() {
       } else {
         await apiCall("/cultos", {
           method: "POST",
-          body: JSON.stringify({ data, nome, musicaIds: selecionadas }),
+          body: JSON.stringify({ data, nome, musicaIds: selecionadas, pessoal }),
         });
       }
 
@@ -1739,81 +1761,102 @@ function initCultos() {
   });
 }
 
+function criarItemCulto(c) {
+  const item = document.createElement("div");
+  item.className = "list-item";
+
+  const dataFormatada = new Date(c.data).toLocaleDateString("pt-BR");
+
+  const main = document.createElement("div");
+  main.className = "list-item-main";
+  main.style.cursor = "pointer";
+
+  // culto.musicaIds vem do shim de API (ver apiCall "/cultos" GET)
+  const qtdMusicas = Array.isArray(c.musicaIds) ? c.musicaIds.length : 0;
+
+  main.innerHTML = `
+    <strong>${c.nome}</strong>
+    <span>${dataFormatada}</span>
+    <span>Músicas: ${qtdMusicas}</span>
+  `;
+  main.addEventListener("click", () => mostrarDetalhesCulto(c));
+
+  const acoes = document.createElement("div");
+  acoes.style.display = "flex";
+  acoes.style.flexDirection = "column";
+  acoes.style.gap = "0.3rem";
+  acoes.style.alignItems = "flex-end";
+
+  const tag = document.createElement("span");
+  tag.className = "tag";
+  tag.textContent = "Ver mapa";
+  tag.style.cursor = "pointer";
+  tag.addEventListener("click", () => mostrarDetalhesCulto(c));
+  acoes.appendChild(tag);
+
+  // Pode editar/excluir: liderança nos cultos oficiais, ou o dono no seu próprio culto pessoal.
+  const podeGerenciar = c.ehPessoal ? c.donoId === currentUser?.id : currentUser?.souLideranca;
+
+  if (podeGerenciar) {
+    const linhaBotoes = document.createElement("div");
+    linhaBotoes.style.display = "flex";
+    linhaBotoes.style.gap = "0.3rem";
+
+    const btnEditar = document.createElement("button");
+    btnEditar.className = "btn secondary small";
+    btnEditar.textContent = "Editar";
+    btnEditar.addEventListener("click", (e) => { e.stopPropagation(); editarCultoPorId(c.id); });
+
+    const btnExcluir = document.createElement("button");
+    btnExcluir.className = "btn danger small";
+    btnExcluir.textContent = "Excluir";
+    btnExcluir.addEventListener("click", (e) => { e.stopPropagation(); excluirCulto(c.id, c.nome); });
+
+    linhaBotoes.appendChild(btnEditar);
+    linhaBotoes.appendChild(btnExcluir);
+    acoes.appendChild(linhaBotoes);
+  }
+
+  item.appendChild(main);
+  item.appendChild(acoes);
+  return item;
+}
+
 function renderCultos() {
   const listaEl = document.getElementById("listaCultos");
+  const listaPessoalEl = document.getElementById("listaCultosPessoais");
   const detalhesCard = document.getElementById("cultoDetalhesCard");
   const detalhesEl = document.getElementById("cultoDetalhes");
 
   listaEl.innerHTML = "";
+  if (listaPessoalEl) listaPessoalEl.innerHTML = "";
   detalhesCard.style.display = "none";
   detalhesEl.innerHTML = "";
 
-  if (cultos.length === 0) {
+  const oficiais = cultos.filter((c) => !c.ehPessoal);
+  const pessoais = cultos.filter((c) => c.ehPessoal);
+
+  if (oficiais.length === 0) {
     listaEl.innerHTML =
-      "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhum culto cadastrado ainda.</p>";
-    return;
+      "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Nenhum culto oficial cadastrado ainda.</p>";
+  } else {
+    oficiais
+      .slice()
+      .sort((a, b) => new Date(a.data) - new Date(b.data))
+      .forEach((c) => listaEl.appendChild(criarItemCulto(c)));
   }
 
-  cultos
-    .slice()
-    .sort((a, b) => new Date(a.data) - new Date(b.data))
-    .forEach((c) => {
-      const item = document.createElement("div");
-      item.className = "list-item";
-
-      const dataFormatada = new Date(c.data).toLocaleDateString("pt-BR");
-
-      const main = document.createElement("div");
-      main.className = "list-item-main";
-      main.style.cursor = "pointer";
-
-      // culto.musicaIds vem do shim de API (ver apiCall "/cultos" GET)
-      const qtdMusicas = Array.isArray(c.musicaIds) ? c.musicaIds.length : 0;
-
-      main.innerHTML = `
-        <strong>${c.nome}</strong>
-        <span>${dataFormatada}</span>
-        <span>Músicas: ${qtdMusicas}</span>
-      `;
-      main.addEventListener("click", () => mostrarDetalhesCulto(c));
-
-      const acoes = document.createElement("div");
-      acoes.style.display = "flex";
-      acoes.style.flexDirection = "column";
-      acoes.style.gap = "0.3rem";
-      acoes.style.alignItems = "flex-end";
-
-      const tag = document.createElement("span");
-      tag.className = "tag";
-      tag.textContent = "Ver mapa";
-      tag.style.cursor = "pointer";
-      tag.addEventListener("click", () => mostrarDetalhesCulto(c));
-      acoes.appendChild(tag);
-
-      if (currentUser?.souLideranca) {
-        const linhaBotoes = document.createElement("div");
-        linhaBotoes.style.display = "flex";
-        linhaBotoes.style.gap = "0.3rem";
-
-        const btnEditar = document.createElement("button");
-        btnEditar.className = "btn secondary small";
-        btnEditar.textContent = "Editar";
-        btnEditar.addEventListener("click", (e) => { e.stopPropagation(); editarCultoPorId(c.id); });
-
-        const btnExcluir = document.createElement("button");
-        btnExcluir.className = "btn danger small";
-        btnExcluir.textContent = "Excluir";
-        btnExcluir.addEventListener("click", (e) => { e.stopPropagation(); excluirCulto(c.id, c.nome); });
-
-        linhaBotoes.appendChild(btnEditar);
-        linhaBotoes.appendChild(btnExcluir);
-        acoes.appendChild(linhaBotoes);
-      }
-
-      item.appendChild(main);
-      item.appendChild(acoes);
-      listaEl.appendChild(item);
-    });
+  if (listaPessoalEl) {
+    if (pessoais.length === 0) {
+      listaPessoalEl.innerHTML =
+        "<p style='font-size:0.85rem;color:var(--texto-secundario);'>Você ainda não criou nenhum culto pessoal.</p>";
+    } else {
+      pessoais
+        .slice()
+        .sort((a, b) => new Date(a.data) - new Date(b.data))
+        .forEach((c) => listaPessoalEl.appendChild(criarItemCulto(c)));
+    }
+  }
 }
 
 function editarCultoPorId(cultoId) {
