@@ -2093,11 +2093,47 @@ function initConfig() {
     btn.addEventListener("click", () => aplicarTema(btn.dataset.tema));
   });
 
+  // Código de convite: visível pra QUALQUER membro logado (autonomia - não depende do líder pra convidar).
+  const codigoConvite = currentUser?.igreja?.convite_codigo || "—";
+  const elCodigoPublico = document.getElementById("codigoConvitePublico");
+  if (elCodigoPublico) elCodigoPublico.textContent = codigoConvite;
+
+  const btnCopiar = document.getElementById("btnCopiarCodigoConvite");
+  const btnCompartilhar = document.getElementById("btnCompartilharCodigoConvite");
+  const msgCodigo = document.getElementById("codigoConviteMensagem");
+
+  if (btnCopiar) {
+    btnCopiar.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(codigoConvite);
+        msgCodigo.style.display = "block";
+        msgCodigo.style.color = "#059669";
+        msgCodigo.textContent = "Código copiado! Manda pra quem você quiser convidar.";
+      } catch {
+        msgCodigo.style.display = "block";
+        msgCodigo.style.color = "#dc2626";
+        msgCodigo.textContent = "Não consegui copiar automaticamente — copia manualmente o código acima.";
+      }
+    });
+  }
+
+  if (btnCompartilhar && navigator.share) {
+    btnCompartilhar.style.display = "inline-block";
+    btnCompartilhar.addEventListener("click", async () => {
+      try {
+        await navigator.share({
+          title: "Convite pra igreja no Harmonia",
+          text: `Entra no Harmonia com a gente! Código da nossa igreja: ${codigoConvite}\nBaixa em: ${window.location.origin}`,
+        });
+      } catch {
+        // usuário cancelou o compartilhamento, sem problema
+      }
+    });
+  }
+
   const cardConvidar = document.getElementById("cardConvidarMembro");
   if (currentUser?.souLideranca) {
     cardConvidar.style.display = "block";
-    document.getElementById("codigoConvite").textContent = currentUser.igreja?.convite_codigo || "—";
-
     const formConvidar = document.getElementById("formConvidarMembro");
     formConvidar.addEventListener("submit", async (e) => {
       e.preventDefault();

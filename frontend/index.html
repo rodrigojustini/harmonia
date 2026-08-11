@@ -628,8 +628,21 @@
         <p>Opções gerais do app.</p>
       </div>
 
+      <div class="card" id="cardCodigoConvite">
+        <h3>Código de convite da igreja</h3>
+        <p><small>Autonomia: qualquer membro pode compartilhar este código com quem quiser convidar. Quem receber
+          escolhe "Já tenho um código de convite" na tela de cadastro, entra com nome/e-mail/senha próprios e já
+          cai direto na sua igreja — sem precisar que a liderança envie nada.</small></p>
+        <div id="codigoConvitePublico" style="font-family:monospace; font-size:1.3rem; background:#111; color:#f2e9dc; padding:0.6rem 1.2rem; border-radius:0.5rem; display:inline-block;"></div>
+        <div style="margin-top:0.6rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button type="button" class="btn secondary small" id="btnCopiarCodigoConvite">Copiar código</button>
+          <button type="button" class="btn secondary small" id="btnCompartilharCodigoConvite" style="display:none;">Compartilhar</button>
+        </div>
+        <div id="codigoConviteMensagem" style="margin-top:0.5rem; font-size:0.85rem; display:none;"></div>
+      </div>
+
       <div class="card" id="cardConvidarMembro" style="display:none;">
-        <h3>Convidar membro para a equipe</h3>
+        <h3>Convidar membro para a equipe (por e-mail)</h3>
         <p><small>O membro recebe um e-mail com um link pra criar a própria senha e acessar o Harmonia.</small></p>
         <form id="formConvidarMembro">
           <div class="field-group">
@@ -647,9 +660,6 @@
           <button type="submit" class="btn primary" id="btnEnviarConvite">Enviar convite por e-mail</button>
         </form>
         <div id="convidarMensagem" style="margin-top:0.75rem; display:none;"></div>
-        <h4 style="margin-top:1.5rem;">Código de convite da igreja</h4>
-        <p><small>Alternativa: compartilhe este código pra alguém criar a própria conta escolhendo "Já tenho um código de convite".</small></p>
-        <div id="codigoConvite" style="font-family:monospace; font-size:1.1rem; background:#111; color:#f2e9dc; padding:0.5rem 1rem; border-radius:0.5rem; display:inline-block;"></div>
       </div>
 
       <div class="card">
@@ -743,7 +753,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=24"></script>
+  <script src="js/app.js?v=25"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
