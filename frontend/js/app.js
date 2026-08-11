@@ -2959,13 +2959,24 @@ async function initHistorico() {
   const btnFiltrarHistorico = document.getElementById("btnFiltrarHistorico");
   btnFiltrarHistorico?.addEventListener("click", () => { cacheAbas.historico = 0; carregarHistoricoSeNecessario(); });
 
-  if (!perfisDaIgreja.length) {
-    await carregarPerfisDaIgreja();
-  }
+  // Subtítulo e filtro de usuário só fazem sentido pra quem enxerga o histórico de todo mundo (liderança).
+  const subtitulo = document.querySelector("#historico .section-title p");
   const filtroUsuario = document.getElementById("filtroUsuario");
-  if (filtroUsuario) {
-    filtroUsuario.innerHTML = `<option value="">Todos os usuários</option>` +
-      perfisDaIgreja.map((p) => `<option value="${p.id}">${p.nome}</option>`).join("");
+  const cardFiltroUsuario = filtroUsuario?.closest(".filtro-card");
+
+  if (currentUser?.souLideranca) {
+    if (subtitulo) subtitulo.textContent = "Acompanhe as ações realizadas por toda a equipe.";
+    if (cardFiltroUsuario) cardFiltroUsuario.style.display = "flex";
+    if (!perfisDaIgreja.length) {
+      await carregarPerfisDaIgreja();
+    }
+    if (filtroUsuario) {
+      filtroUsuario.innerHTML = `<option value="">Todos os usuários</option>` +
+        perfisDaIgreja.map((p) => `<option value="${p.id}">${p.nome}</option>`).join("");
+    }
+  } else {
+    if (subtitulo) subtitulo.textContent = "Acompanhe suas próprias ações no sistema.";
+    if (cardFiltroUsuario) cardFiltroUsuario.style.display = "none";
   }
 }
 
