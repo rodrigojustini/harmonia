@@ -672,6 +672,20 @@ function initTabs() {
   });
 }
 
+// ====== UTIL: SANITIZAÇÃO DE TEXTO COLADO (proteção contra clipboard URL-encoded) ======
+function sanitizarTextoColado(texto) {
+  if (!texto) return texto;
+  // Detecta padrão típico de URL-encoding (%20, %5B, %0A, %23 etc)
+  const pareceEncoded = /%[0-9A-Fa-f]{2}/.test(texto) && (texto.match(/%[0-9A-Fa-f]{2}/g) || []).length >= 3;
+  if (!pareceEncoded) return texto;
+  try {
+    return decodeURIComponent(texto);
+  } catch (e) {
+    // Se decodeURIComponent falhar (encoding malformado), retorna o original
+    return texto;
+  }
+}
+
 // ====== UTIL: TRANSPOSIÇÃO DE NOTAS / ACORDES ======
 const ESCALA = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const MAPA_BEMOL = {
@@ -797,7 +811,7 @@ function initMusicas() {
     const tags = document.getElementById("musicaTags").value.split(",").map((t) => t.trim()).filter(Boolean);
     const vocalistaId = document.getElementById("musicaVocalista").value || null;
     const link = document.getElementById("musicaLink").value.trim();
-    const cifra = document.getElementById("musicaCifra").value;
+    const cifra = sanitizarTextoColado(document.getElementById("musicaCifra").value);
     const obs = document.getElementById("musicaObs").value.trim();
 
     if (!titulo) {
@@ -1058,7 +1072,7 @@ function initMeuRepertorio() {
     const categoria = document.getElementById("repertorioCategoria").value;
     const tags = document.getElementById("repertorioTags").value.split(",").map((t) => t.trim()).filter(Boolean);
     const link = document.getElementById("repertorioLink").value.trim();
-    const cifra = document.getElementById("repertorioCifra").value;
+    const cifra = sanitizarTextoColado(document.getElementById("repertorioCifra").value);
     const obs = document.getElementById("repertorioObs").value.trim();
 
     if (!titulo) {
