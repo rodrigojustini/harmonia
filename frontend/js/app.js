@@ -190,12 +190,16 @@ async function apiCall(endpoint, options = {}) {
 
     // ---- CULTOS ----
     if (path === "/cultos" && method === "GET") {
-      const { data, error } = await supabase.from("cultos").select("*, culto_musicas(musica_id, ordem)").order("data", { ascending: false });
+      const { data, error } = await supabase.from("cultos")
+        .select("*, culto_musicas(musica_id, repertorio_pessoal_id, ordem)")
+        .order("data", { ascending: false });
       if (error) throw error;
       return data.map(c => ({
         id: c.id, data: c.data, nome: c.nome, shareSlug: c.share_slug,
         donoId: c.dono_id, ehPessoal: !!c.dono_id,
-        musicaIds: c.culto_musicas.map(cm => cm.musica_id),
+        musicaIds: c.culto_musicas
+          .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+          .map(cm => cm.musica_id ? `musica:${cm.musica_id}` : `pessoal:${cm.repertorio_pessoal_id}`),
       }));
     }
     if (path === "/cultos" && method === "POST") {
@@ -207,7 +211,14 @@ async function apiCall(endpoint, options = {}) {
       }).select().single();
       if (error) throw error;
       if (body.musicaIds?.length) {
-        const linhas = body.musicaIds.map((mid, i) => ({ igreja_id: currentUser.igreja.id, culto_id: culto.id, musica_id: mid, ordem: i + 1 }));
+        const linhas = body.musicaIds.map((valor, i) => {
+          const [origem, id] = valor.split(":");
+          return {
+            igreja_id: currentUser.igreja.id, culto_id: culto.id, ordem: i + 1,
+            musica_id: origem === "musica" ? id : null,
+            repertorio_pessoal_id: origem === "pessoal" ? id : null,
+          };
+        });
         const { error: cmErr } = await supabase.from("culto_musicas").insert(linhas);
         if (cmErr) throw cmErr;
       }
@@ -222,7 +233,14 @@ async function apiCall(endpoint, options = {}) {
       const { error: delErr } = await supabase.from("culto_musicas").delete().eq("culto_id", cultoId);
       if (delErr) throw delErr;
       if (body.musicaIds?.length) {
-        const linhas = body.musicaIds.map((mid, i) => ({ igreja_id: currentUser.igreja.id, culto_id: cultoId, musica_id: mid, ordem: i + 1 }));
+        const linhas = body.musicaIds.map((valor, i) => {
+          const [origem, id] = valor.split(":");
+          return {
+            igreja_id: currentUser.igreja.id, culto_id: cultoId, ordem: i + 1,
+            musica_id: origem === "musica" ? id : null,
+            repertorio_pessoal_id: origem === "pessoal" ? id : null,
+          };
+        });
         const { error: cmErr } = await supabase.from("culto_musicas").insert(linhas);
         if (cmErr) throw cmErr;
       }
@@ -935,23 +953,45 @@ function renderMusicasNoSelectCulto() {
 
   select.innerHTML = "";
 
-  if (musicas.length === 0) {
+  if (musicas.length === 0 && repertorioPessoal.length === 0) {
     const opt = document.createElement("option");
     opt.disabled = true;
-    opt.textContent = "Cadastre músicas primeiro";
+    opt.textContent = "Cadastre músicas primeiro (no catálogo da igreja ou no seu Meu Repertório)";
     select.appendChild(opt);
     return;
   }
 
-  musicas
-    .slice()
-    .sort((a, b) => a.titulo.localeCompare(b.titulo))
-    .forEach((m) => {
-      const opt = document.createElement("option");
-      opt.value = m.id;
-      opt.textContent = `${m.titulo} (${m.tomOriginal || "-"})`;
-      select.appendChild(opt);
-    });
+  // Catálogo compartilhado da igreja — valor prefixado "musica:" pra diferenciar na hora de salvar.
+  if (musicas.length > 0) {
+    const grupoIgreja = document.createElement("optgroup");
+    grupoIgreja.label = "Catálogo da igreja";
+    musicas
+      .slice()
+      .sort((a, b) => a.titulo.localeCompare(b.titulo))
+      .forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = `musica:${m.id}`;
+        opt.textContent = `${m.titulo} (${m.tomOriginal || "-"})`;
+        grupoIgreja.appendChild(opt);
+      });
+    select.appendChild(grupoIgreja);
+  }
+
+  // Meu Repertório pessoal — sempre disponível, independente do que a liderança cadastrou.
+  if (repertorioPessoal.length > 0) {
+    const grupoPessoal = document.createElement("optgroup");
+    grupoPessoal.label = "Meu repertório pessoal";
+    repertorioPessoal
+      .slice()
+      .sort((a, b) => a.titulo.localeCompare(b.titulo))
+      .forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = `pessoal:${m.id}`;
+        opt.textContent = `${m.titulo} (${m.tom_original || "-"})`;
+        grupoPessoal.appendChild(opt);
+      });
+    select.appendChild(grupoPessoal);
+  }
 }
 
 function mostrarMapaMusica(musica) {
@@ -1046,6 +1086,7 @@ async function loadRepertorioPessoal() {
     if (error) throw error;
     repertorioPessoal = data;
     renderRepertorioPessoal();
+    renderMusicasNoSelectCulto();
   } catch (error) {
     console.error("Erro ao carregar repertório pessoal:", error);
   }
@@ -1671,6 +1712,14 @@ async function loadCultos() {
 }
 
 async function carregarCultosSeNecessario() {
+  // O select de músicas do culto depende tanto do catálogo da igreja quanto do
+  // Meu Repertório pessoal (autonomia: membro pode montar culto só com músicas suas).
+  if (precisaRecarregar("repertorio")) {
+    await loadRepertorioPessoal();
+    marcarCarregado("repertorio");
+  }
+  renderMusicasNoSelectCulto();
+
   if (!precisaRecarregar("cultos")) return;
   await loadCultos();
   marcarCarregado("cultos");
@@ -1911,10 +1960,15 @@ function mostrarDetalhesCulto(culto) {
 
   // Verificar estrutura do culto (backend vs local)
   if (Array.isArray(culto.musicaIds) && culto.musicaIds.length) {
-    culto.musicaIds.forEach((mid) => {
-      const mus = musicas.find((x) => x.id === mid);
+    culto.musicaIds.forEach((valor) => {
+      const [origem, id] = String(valor).includes(":") ? valor.split(":") : ["musica", valor];
+      const mus = origem === "pessoal"
+        ? repertorioPessoal.find((x) => x.id === id)
+        : musicas.find((x) => x.id === id);
       if (mus) {
-        html += `<li>${mus.titulo} (${mus.tomOriginal || "-"})</li>`;
+        const tom = mus.tomOriginal || mus.tom_original || "-";
+        const sufixo = origem === "pessoal" ? " · meu repertório" : "";
+        html += `<li>${mus.titulo} (${tom})${sufixo}</li>`;
       }
     });
   } else if (culto.musicas && Array.isArray(culto.musicas)) {
