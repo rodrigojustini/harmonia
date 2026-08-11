@@ -398,9 +398,14 @@
               <input id="cultoNome" type="text" placeholder="Domingo Noite, Quinta, etc." required />
             </div>
             <div class="field-group">
-              <label for="cultoMusicas">Músicas (ordem do culto)</label>
-              <select id="cultoMusicas" multiple size="6"></select>
-              <small>Segure Ctrl (ou toque) para selecionar várias músicas.</small>
+              <label>Músicas do culto</label>
+              <small>Toque numa música pra adicionar. A ordem que você adiciona é a ordem do culto — dá pra reordenar depois.</small>
+              <div id="cultoMusicasDisponiveis" class="musica-picker-disponiveis"></div>
+              <div class="musica-picker-selecionadas-wrap">
+                <strong>Ordem do culto (<span id="cultoMusicasContagem">0</span>)</strong>
+                <p id="cultoMusicasVazioMsg" class="musica-picker-vazio">Nenhuma música selecionada ainda — toque numa música acima.</p>
+                <ol id="cultoMusicasSelecionadas" class="musica-picker-selecionadas"></ol>
+              </div>
             </div>
             <div class="modal-actions" style="justify-content:flex-start; gap:0.5rem;">
               <button class="btn primary" type="submit" id="btnSalvarCulto">Criar culto / mapa</button>
@@ -751,7 +756,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=6"></script>
-  <script src="js/app.js?v=26"></script>
+  <script src="js/app.js?v=28"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

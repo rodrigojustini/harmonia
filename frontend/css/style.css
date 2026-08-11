@@ -1323,3 +1323,135 @@ textarea {
 .btn-icone-remover:hover {
   color: #ff6b5b;
 }
+
+/* ====== SELETOR DE MÚSICAS DO CULTO (picker claro, tocar-pra-adicionar) ====== */
+.musica-picker-disponiveis {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--cor-borda-sutil);
+  border-radius: 0.8rem;
+  padding: 0.4rem;
+  background: var(--superficie-sutil);
+}
+
+.musica-picker-grupo-titulo {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--texto-secundario);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.5rem 0.5rem 0.25rem;
+}
+
+.musica-picker-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.6rem;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-size: 0.9rem;
+}
+
+.musica-picker-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.musica-picker-item.ja-selecionada {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.musica-picker-item.ja-selecionada:hover {
+  background: transparent;
+}
+
+.musica-picker-item-check {
+  font-size: 0.85rem;
+  color: var(--verde);
+  min-width: 1.2rem;
+  text-align: center;
+}
+
+.musica-picker-selecionadas-wrap {
+  margin-top: 0.9rem;
+}
+
+.musica-picker-vazio {
+  font-size: 0.85rem;
+  color: var(--texto-secundario);
+  margin-top: 0.3rem;
+}
+
+.musica-picker-selecionadas {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.musica-picker-selecionada-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--cinza-escuro);
+  border: 1px solid var(--cor-borda-sutil);
+  border-radius: 0.8rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.musica-picker-selecionada-ordem {
+  font-weight: 700;
+  color: var(--verde);
+  min-width: 1.4rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.musica-picker-selecionada-titulo {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.musica-picker-selecionada-origem {
+  font-size: 0.72rem;
+  color: var(--texto-secundario);
+  display: block;
+}
+
+.musica-picker-acoes {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.musica-picker-acoes button {
+  background: transparent;
+  border: 1px solid var(--cor-borda-sutil);
+  color: var(--branco);
+  border-radius: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.musica-picker-acoes button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.musica-picker-acoes button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.musica-picker-acoes button.remover {
+  color: #ff6b5b;
+  border-color: rgba(255, 107, 91, 0.4);
+}

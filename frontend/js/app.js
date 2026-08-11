@@ -947,51 +947,111 @@ function renderMusicas() {
     });
 }
 
-function renderMusicasNoSelectCulto() {
-  const select = document.getElementById("cultoMusicas");
-  if (!select) return;
+// Estado do picker de músicas do culto: fonte da verdade em vez do <select multiple>
+// (mais claro pra usar no celular: toca pra adicionar, cada item já mostra a ordem).
+let cultoMusicasEscolhidas = []; // [{ valor: "musica:id" | "pessoal:id", titulo, tom, origem }]
 
-  select.innerHTML = "";
+function musicaJaEscolhida(valor) {
+  return cultoMusicasEscolhidas.some((m) => m.valor === valor);
+}
+
+function adicionarMusicaAoCulto(valor, titulo, tom, origem) {
+  if (musicaJaEscolhida(valor)) return;
+  cultoMusicasEscolhidas.push({ valor, titulo, tom, origem });
+  renderMusicasNoSelectCulto();
+  renderCultoMusicasSelecionadas();
+}
+
+function removerMusicaDoCulto(valor) {
+  cultoMusicasEscolhidas = cultoMusicasEscolhidas.filter((m) => m.valor !== valor);
+  renderMusicasNoSelectCulto();
+  renderCultoMusicasSelecionadas();
+}
+
+function moverMusicaDoCulto(valor, direcao) {
+  const i = cultoMusicasEscolhidas.findIndex((m) => m.valor === valor);
+  const j = i + direcao;
+  if (i < 0 || j < 0 || j >= cultoMusicasEscolhidas.length) return;
+  [cultoMusicasEscolhidas[i], cultoMusicasEscolhidas[j]] = [cultoMusicasEscolhidas[j], cultoMusicasEscolhidas[i]];
+  renderCultoMusicasSelecionadas();
+}
+
+function renderMusicasNoSelectCulto() {
+  const container = document.getElementById("cultoMusicasDisponiveis");
+  if (!container) return;
+
+  container.innerHTML = "";
 
   if (musicas.length === 0 && repertorioPessoal.length === 0) {
-    const opt = document.createElement("option");
-    opt.disabled = true;
-    opt.textContent = "Cadastre músicas primeiro (no catálogo da igreja ou no seu Meu Repertório)";
-    select.appendChild(opt);
+    container.innerHTML = `<p class="musica-picker-vazio">Cadastre músicas primeiro (no catálogo da igreja ou no seu Meu Repertório).</p>`;
     return;
   }
 
-  // Catálogo compartilhado da igreja — valor prefixado "musica:" pra diferenciar na hora de salvar.
-  if (musicas.length > 0) {
-    const grupoIgreja = document.createElement("optgroup");
-    grupoIgreja.label = "Catálogo da igreja";
-    musicas
-      .slice()
-      .sort((a, b) => a.titulo.localeCompare(b.titulo))
-      .forEach((m) => {
-        const opt = document.createElement("option");
-        opt.value = `musica:${m.id}`;
-        opt.textContent = `${m.titulo} (${m.tomOriginal || "-"})`;
-        grupoIgreja.appendChild(opt);
-      });
-    select.appendChild(grupoIgreja);
-  }
+  const montaGrupo = (titulo, lista, origem, tomKey) => {
+    if (lista.length === 0) return;
+    const h = document.createElement("div");
+    h.className = "musica-picker-grupo-titulo";
+    h.textContent = titulo;
+    container.appendChild(h);
 
-  // Meu Repertório pessoal — sempre disponível, independente do que a liderança cadastrou.
-  if (repertorioPessoal.length > 0) {
-    const grupoPessoal = document.createElement("optgroup");
-    grupoPessoal.label = "Meu repertório pessoal";
-    repertorioPessoal
+    lista
       .slice()
       .sort((a, b) => a.titulo.localeCompare(b.titulo))
       .forEach((m) => {
-        const opt = document.createElement("option");
-        opt.value = `pessoal:${m.id}`;
-        opt.textContent = `${m.titulo} (${m.tom_original || "-"})`;
-        grupoPessoal.appendChild(opt);
+        const valor = `${origem}:${m.id}`;
+        const tom = m[tomKey] || "-";
+        const jaEscolhida = musicaJaEscolhida(valor);
+
+        const item = document.createElement("div");
+        item.className = "musica-picker-item" + (jaEscolhida ? " ja-selecionada" : "");
+        item.innerHTML = `
+          <span>${m.titulo} (${tom})</span>
+          <span class="musica-picker-item-check">${jaEscolhida ? "✓ adicionada" : "+ tocar pra adicionar"}</span>
+        `;
+        if (!jaEscolhida) {
+          item.addEventListener("click", () => adicionarMusicaAoCulto(valor, m.titulo, tom, origem));
+        }
+        container.appendChild(item);
       });
-    select.appendChild(grupoPessoal);
-  }
+  };
+
+  montaGrupo("Catálogo da igreja", musicas, "musica", "tomOriginal");
+  montaGrupo("Meu repertório pessoal", repertorioPessoal, "pessoal", "tom_original");
+}
+
+function renderCultoMusicasSelecionadas() {
+  const lista = document.getElementById("cultoMusicasSelecionadas");
+  const vazioMsg = document.getElementById("cultoMusicasVazioMsg");
+  const contagem = document.getElementById("cultoMusicasContagem");
+  if (!lista) return;
+
+  if (contagem) contagem.textContent = cultoMusicasEscolhidas.length;
+  if (vazioMsg) vazioMsg.style.display = cultoMusicasEscolhidas.length === 0 ? "block" : "none";
+
+  lista.innerHTML = cultoMusicasEscolhidas.map((m, i) => `
+    <li class="musica-picker-selecionada-item">
+      <span class="musica-picker-selecionada-ordem">${i + 1}</span>
+      <span class="musica-picker-selecionada-titulo">
+        ${m.titulo} (${m.tom})
+        ${m.origem === "pessoal" ? '<span class="musica-picker-selecionada-origem">meu repertório</span>' : ""}
+      </span>
+      <span class="musica-picker-acoes">
+        <button type="button" data-acao="subir" data-valor="${m.valor}" ${i === 0 ? "disabled" : ""} title="Subir">▲</button>
+        <button type="button" data-acao="descer" data-valor="${m.valor}" ${i === cultoMusicasEscolhidas.length - 1 ? "disabled" : ""} title="Descer">▼</button>
+        <button type="button" class="remover" data-acao="remover" data-valor="${m.valor}" title="Remover">✕</button>
+      </span>
+    </li>
+  `).join("");
+
+  lista.querySelectorAll("button[data-acao]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const valor = btn.dataset.valor;
+      const acao = btn.dataset.acao;
+      if (acao === "remover") removerMusicaDoCulto(valor);
+      if (acao === "subir") moverMusicaDoCulto(valor, -1);
+      if (acao === "descer") moverMusicaDoCulto(valor, 1);
+    });
+  });
 }
 
 function mostrarMapaMusica(musica) {
@@ -1660,7 +1720,7 @@ function renderAniversariantes() {
   const mesAtual = new Date().getMonth();
   const aniversariantes = membros.filter((m) => {
     if (!m.aniversario) return false;
-    const d = new Date(m.aniversario);
+    const d = new Date(m.aniversario + "T00:00:00");
     return d.getMonth() === mesAtual;
   });
 
@@ -1673,15 +1733,15 @@ function renderAniversariantes() {
   aniversariantes
     .slice()
     .sort((a, b) => {
-      const da = new Date(a.aniversario).getDate();
-      const db = new Date(b.aniversario).getDate();
+      const da = new Date(a.aniversario + "T00:00:00").getDate();
+      const db = new Date(b.aniversario + "T00:00:00").getDate();
       return da - db;
     })
     .forEach((m) => {
       const item = document.createElement("div");
       item.className = "list-item";
 
-      const d = new Date(m.aniversario);
+      const d = new Date(m.aniversario + "T00:00:00");
       const data = d.toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
@@ -1732,6 +1792,9 @@ function limparFormCulto() {
   document.getElementById("tituloFormCulto").textContent = "Novo culto";
   document.getElementById("btnSalvarCulto").textContent = "Criar culto / mapa";
   document.getElementById("btnCancelarEdicaoCulto").style.display = "none";
+  cultoMusicasEscolhidas = [];
+  renderMusicasNoSelectCulto();
+  renderCultoMusicasSelecionadas();
 }
 
 function initCultos() {
@@ -1751,6 +1814,7 @@ function initCultos() {
   }
 
   document.getElementById("btnCancelarEdicaoCulto").addEventListener("click", limparFormCulto);
+  renderCultoMusicasSelecionadas();
 
   const form = document.getElementById("formCulto");
   form.addEventListener("submit", async (e) => {
@@ -1759,7 +1823,6 @@ function initCultos() {
     const editandoId = document.getElementById("cultoEditandoId").value || null;
     const data = document.getElementById("cultoData").value;
     const nome = document.getElementById("cultoNome").value.trim();
-    const select = document.getElementById("cultoMusicas");
     const seletorPessoal = document.getElementById("cultoPessoal");
     // Liderança escolhe no seletor; membro comum sempre cria pessoal (true por padrão).
     const pessoal = currentUser?.souLideranca ? seletorPessoal?.value === "true" : true;
@@ -1769,9 +1832,7 @@ function initCultos() {
       return;
     }
 
-    const selecionadas = Array.from(select.selectedOptions).map((opt) =>
-      opt.value
-    );
+    const selecionadas = cultoMusicasEscolhidas.map((m) => m.valor);
 
     if (selecionadas.length === 0) {
       showNotification("Selecione pelo menos uma música para o culto.", "error");
@@ -1814,7 +1875,7 @@ function criarItemCulto(c) {
   const item = document.createElement("div");
   item.className = "list-item";
 
-  const dataFormatada = new Date(c.data).toLocaleDateString("pt-BR");
+  const dataFormatada = new Date(c.data + "T00:00:00").toLocaleDateString("pt-BR");
 
   const main = document.createElement("div");
   main.className = "list-item-main";
@@ -1916,10 +1977,17 @@ function editarCultoPorId(cultoId) {
   document.getElementById("cultoData").value = c.data;
   document.getElementById("cultoNome").value = c.nome;
 
-  const select = document.getElementById("cultoMusicas");
-  Array.from(select.options).forEach((opt) => {
-    opt.selected = (c.musicaIds || []).includes(opt.value);
+  // Reconstrói o estado do picker a partir das músicas já salvas no culto, na ordem certa.
+  cultoMusicasEscolhidas = (c.musicaIds || []).map((valor) => {
+    const [origem, id] = String(valor).includes(":") ? valor.split(":") : ["musica", valor];
+    const mus = origem === "pessoal"
+      ? repertorioPessoal.find((x) => x.id === id)
+      : musicas.find((x) => x.id === id);
+    const tom = mus ? (mus.tomOriginal || mus.tom_original || "-") : "-";
+    return { valor, titulo: mus?.titulo || "(música não encontrada)", tom, origem };
   });
+  renderMusicasNoSelectCulto();
+  renderCultoMusicasSelecionadas();
 
   document.getElementById("tituloFormCulto").textContent = "Editar culto";
   document.getElementById("btnSalvarCulto").textContent = "Salvar alterações";
@@ -1949,7 +2017,7 @@ function mostrarDetalhesCulto(culto) {
   const el = document.getElementById("cultoDetalhes");
   card.style.display = "block";
 
-  const dataFormatada = new Date(culto.data).toLocaleDateString("pt-BR");
+  const dataFormatada = new Date(culto.data + "T00:00:00").toLocaleDateString("pt-BR");
 
   let html = `
     <p><strong>${culto.nome}</strong> - ${dataFormatada}</p>
@@ -3067,6 +3135,11 @@ function getAcaoDescricao(acao) {
 }
 
 function formatDate(dateStr) {
+  // Corrige bug de fuso: "2026-08-16" (sem hora) o JS interpreta como UTC meia-noite,
+  // que em fusos negativos (Brasil) cai pro dia anterior ao converter pra hora local.
+  if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString("pt-BR");
+  }
   return new Date(dateStr).toLocaleDateString('pt-BR');
 }
 
