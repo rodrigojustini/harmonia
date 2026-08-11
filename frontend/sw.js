@@ -3,7 +3,7 @@
 // network-first para chamadas de API (Supabase) — nunca serve dados
 // de escala/repertório desatualizados quando há internet.
 
-const CACHE_VERSION = 'harmonia-v1';
+const CACHE_VERSION = 'harmonia-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 const PRECACHE_ASSETS = [
