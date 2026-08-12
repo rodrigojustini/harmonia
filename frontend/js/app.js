@@ -3374,13 +3374,31 @@ async function popularSelectPalco() {
 
 async function carregarCultoNoPalco(cultoId) {
   try {
+    // O culto pode ter músicas do catálogo da igreja E/OU do Meu Repertório pessoal —
+    // garante que as duas listas estejam carregadas antes de montar o mapa do palco.
+    if (repertorioPessoal.length === 0) {
+      await loadRepertorioPessoal();
+    }
+
     const { data: culto, error } = await supabase.from("cultos")
-      .select("*, culto_musicas(musica_id, ordem)").eq("id", cultoId).single();
+      .select("*, culto_musicas(musica_id, repertorio_pessoal_id, ordem)").eq("id", cultoId).single();
     if (error) throw error;
 
     palcoCultoAtual = culto;
     const ordenadas = (culto.culto_musicas || []).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-    palcoMusicasOrdenadas = ordenadas.map((cm) => musicas.find((m) => m.id === cm.musica_id)).filter(Boolean);
+    palcoMusicasOrdenadas = ordenadas
+      .map((cm) => {
+        if (cm.musica_id) {
+          return musicas.find((m) => m.id === cm.musica_id);
+        }
+        if (cm.repertorio_pessoal_id) {
+          const m = repertorioPessoal.find((r) => r.id === cm.repertorio_pessoal_id);
+          // normaliza pro mesmo formato de campo usado no catálogo da igreja (tomOriginal)
+          return m ? { ...m, tomOriginal: m.tom_original } : null;
+        }
+        return null;
+      })
+      .filter(Boolean);
     palcoIndiceAtual = 0;
     renderPalcoMusicaAtual();
   } catch (e) {
