@@ -503,6 +503,21 @@ body {
   .palco-cifra { max-height: 62vh; max-height: 62dvh; }
 }
 
+/* Modo Palco em tela cheia: esconde cabeçalho e abas pra sobrar mais espaço pra cifra.
+   Ativado automaticamente ao entrar no Modo Palco; o botão ☰ alterna mostrar/ocultar. */
+body.palco-header-oculto .app-header {
+  display: none;
+}
+body.palco-header-oculto .palco-tela {
+  padding-top: 1rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+body.palco-header-oculto .palco-cifra {
+  max-height: 68vh;
+  max-height: 68dvh;
+}
+
 .badge-confirmacao {
   cursor: pointer;
   font-size: 0.95rem;

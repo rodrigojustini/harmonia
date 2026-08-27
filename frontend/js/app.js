@@ -671,6 +671,11 @@ function initTabs() {
       btn.classList.add("active");
       document.getElementById(tab).classList.add("active");
 
+      // Fora do Modo Palco, o cabeçalho/abas sempre voltam a aparecer normalmente
+      if (tab !== "modopalco") {
+        document.body.classList.remove("palco-header-oculto");
+      }
+
       if (tab === "aniversarios") {
         renderAniversariantes();
       }
@@ -680,6 +685,7 @@ function initTabs() {
       if (tab === "modopalco") {
         popularSelectPalco();
         requestWakeLock(true); // liga sozinho, sem toast — não depende de lembrar de ativar em Config antes
+        document.body.classList.add("palco-header-oculto"); // esconde cabeçalho/abas pra dar mais espaço à cifra
       }
       if (tab === "trocas") {
         carregarTrocasSeNecessario();
@@ -3547,6 +3553,10 @@ function initModoPalco() {
   });
 
   document.getElementById("palcoAutoScrollBtn")?.addEventListener("click", alternarAutoScrollPalco);
+
+  document.getElementById("palcoToggleHeaderBtn")?.addEventListener("click", () => {
+    document.body.classList.toggle("palco-header-oculto");
+  });
 
   document.getElementById("palcoTranspMenos")?.addEventListener("click", () => transporPalco(-1));
   document.getElementById("palcoTranspMais")?.addEventListener("click", () => transporPalco(1));

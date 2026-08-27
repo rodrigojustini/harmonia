@@ -11,7 +11,7 @@
   <title>Harmonia - Ministério de Louvor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
-  <link rel="stylesheet" href="/css/style.css?v=11" />
+  <link rel="stylesheet" href="/css/style.css?v=12" />
   <script>
     (function () {
       var salvo = localStorage.getItem("harmonia_tema");
@@ -703,6 +703,7 @@
     <section id="modopalco" class="section">
       <div class="palco-tela">
         <div class="palco-topo">
+          <button class="btn secondary small" id="palcoToggleHeaderBtn" title="Mostrar/ocultar menu">☰</button>
           <select id="palcoCultoSelect"></select>
           <button class="btn secondary small" id="palcoCronometroBtn">⏱ 00:00</button>
         </div>
@@ -761,7 +762,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="/js/supabase-config.js?v=6"></script>
-  <script src="/js/app.js?v=31"></script>
+  <script src="/js/app.js?v=32"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
