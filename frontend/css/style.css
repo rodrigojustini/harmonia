@@ -462,7 +462,8 @@ body {
 }
 
 .palco-cifra {
-  max-height: 32vh;
+  max-height: 58vh;
+  max-height: 58dvh; /* altura real da tela em Android/iOS (ignora a barra de endereço que aparece/some) */
   overflow-y: auto;
   white-space: pre-wrap;
   color: #e8dfd2;
@@ -496,9 +497,10 @@ body {
 }
 
 @media (max-width: 640px) {
-  .palco-tela { padding-top: 1rem; }
+  .palco-tela { padding-top: 1rem; min-height: auto; gap: 1rem; }
   .palco-topo { position: static; transform: none; margin-bottom: 1rem; }
   .palco-btn-nav { padding: 0.8rem 1.2rem; font-size: 1rem; }
+  .palco-cifra { max-height: 62vh; max-height: 62dvh; }
 }
 
 .badge-confirmacao {
