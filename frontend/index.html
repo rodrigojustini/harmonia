@@ -11,7 +11,7 @@
   <title>Harmonia - Ministério de Louvor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
-  <link rel="stylesheet" href="/css/style.css?v=9" />
+  <link rel="stylesheet" href="/css/style.css?v=10" />
   <script>
     (function () {
       var salvo = localStorage.getItem("harmonia_tema");
@@ -710,7 +710,12 @@
         <div class="palco-musica-atual">
           <div class="palco-numero" id="palcoIndice">— / —</div>
           <h1 id="palcoTitulo">Selecione um culto</h1>
-          <div class="palco-tom" id="palcoTom"></div>
+          <div class="palco-tom-row">
+            <button class="btn secondary small palco-transp-btn" id="palcoTranspMenos" title="Baixar meio tom">−</button>
+            <span class="palco-tom" id="palcoTom"></span>
+            <button class="btn secondary small palco-transp-btn" id="palcoTranspMais" title="Subir meio tom">+</button>
+            <button class="btn secondary small palco-transp-reset" id="palcoTranspReset" title="Voltar ao tom original" style="display:none;"></button>
+          </div>
           <div class="palco-obs" id="palcoObs"></div>
         </div>
 
@@ -756,7 +761,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="/js/supabase-config.js?v=6"></script>
-  <script src="/js/app.js?v=30"></script>
+  <script src="/js/app.js?v=31"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

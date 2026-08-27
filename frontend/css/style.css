@@ -393,7 +393,34 @@ body {
   font-size: clamp(1.5rem, 5vw, 2.5rem);
   color: var(--verde);
   font-weight: 700;
+}
+
+.palco-tom-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
   margin-bottom: 0.6rem;
+}
+
+.palco-transp-btn {
+  width: 2.3rem;
+  height: 2.3rem;
+  padding: 0;
+  font-size: 1.3rem;
+  line-height: 1;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.palco-transp-reset {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  opacity: 0.85;
 }
 
 .palco-obs {

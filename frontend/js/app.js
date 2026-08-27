@@ -3349,6 +3349,7 @@ let palcoIndiceAtual = 0;
 let palcoCronometroInterval = null;
 let palcoCronometroSegundos = 0;
 let palcoCronometroRodando = false;
+let palcoTranspOffset = 0; // semitons transpostos na música atual do Modo Palco (reseta a cada troca de música)
 
 async function popularSelectPalco() {
   const select = document.getElementById("palcoCultoSelect");
@@ -3408,14 +3409,16 @@ async function carregarCultoNoPalco(cultoId) {
 
 function renderPalcoMusicaAtual() {
   const tituloEl = document.getElementById("palcoTitulo");
-  const tomEl = document.getElementById("palcoTom");
   const obsEl = document.getElementById("palcoObs");
   const indiceEl = document.getElementById("palcoIndice");
   const previewEl = document.getElementById("palcoProximaPreview");
   const cifraWrap = document.getElementById("palcoCifraWrap");
   const cifraTexto = document.getElementById("palcoCifraTexto");
+  const tomEl = document.getElementById("palcoTom");
 
   pararAutoScrollPalco();
+  palcoTranspOffset = 0; // toda música nova volta a abrir no tom original
+  atualizarBotaoResetTranspPalco();
 
   if (!palcoMusicasOrdenadas.length) {
     tituloEl.textContent = "Nenhuma música no mapa deste culto";
@@ -3430,19 +3433,61 @@ function renderPalcoMusicaAtual() {
   const m = palcoMusicasOrdenadas[palcoIndiceAtual];
   indiceEl.textContent = `${palcoIndiceAtual + 1} / ${palcoMusicasOrdenadas.length}`;
   tituloEl.textContent = m.titulo;
-  tomEl.textContent = [m.tomOriginal ? `Tom: ${m.tomOriginal}` : null, m.bpm ? `${m.bpm} BPM` : null].filter(Boolean).join("  •  ");
   obsEl.textContent = m.observacoes || "";
 
-  if (m.cifra && m.cifra.trim()) {
-    cifraWrap.style.display = "block";
-    cifraTexto.textContent = m.cifra;
-    cifraTexto.scrollTop = 0;
-  } else {
-    cifraWrap.style.display = "none";
-  }
+  renderPalcoTomECifra();
+  cifraTexto.scrollTop = 0;
 
   const proxima = palcoMusicasOrdenadas[palcoIndiceAtual + 1];
   previewEl.textContent = proxima ? `Próxima: ${proxima.titulo}` : "Última música do mapa";
+}
+
+// Redesenha só o tom exibido e a cifra, sem mexer no título/scroll/auto-rolagem.
+// Usado tanto no carregamento da música quanto ao clicar em transpor (+/-/reset).
+function renderPalcoTomECifra() {
+  if (!palcoMusicasOrdenadas.length) return;
+  const tomEl = document.getElementById("palcoTom");
+  const cifraWrap = document.getElementById("palcoCifraWrap");
+  const cifraTexto = document.getElementById("palcoCifraTexto");
+  const m = palcoMusicasOrdenadas[palcoIndiceAtual];
+
+  const tomExibido = m.tomOriginal
+    ? (palcoTranspOffset ? transporNota(m.tomOriginal, palcoTranspOffset) : m.tomOriginal)
+    : null;
+  tomEl.textContent = [tomExibido ? `Tom: ${tomExibido}` : null, m.bpm ? `${m.bpm} BPM` : null].filter(Boolean).join("  •  ");
+
+  if (m.cifra && m.cifra.trim()) {
+    cifraWrap.style.display = "block";
+    cifraTexto.textContent = palcoTranspOffset ? transporTextoCifra(m.cifra, palcoTranspOffset) : m.cifra;
+  } else {
+    cifraWrap.style.display = "none";
+  }
+}
+
+// +1 ou -1 semitom na música atual do Modo Palco
+function transporPalco(delta) {
+  if (!palcoMusicasOrdenadas.length) return;
+  palcoTranspOffset += delta;
+  renderPalcoTomECifra();
+  atualizarBotaoResetTranspPalco();
+}
+
+function resetarTransposicaoPalco() {
+  if (!palcoTranspOffset) return;
+  palcoTranspOffset = 0;
+  renderPalcoTomECifra();
+  atualizarBotaoResetTranspPalco();
+}
+
+function atualizarBotaoResetTranspPalco() {
+  const resetBtn = document.getElementById("palcoTranspReset");
+  if (!resetBtn) return;
+  if (!palcoTranspOffset) {
+    resetBtn.style.display = "none";
+    return;
+  }
+  resetBtn.style.display = "inline-flex";
+  resetBtn.textContent = `↺ ${palcoTranspOffset > 0 ? "+" : ""}${palcoTranspOffset}`;
 }
 
 // ====== AUTO-ROLAGEM DA CIFRA NO MODO PALCO ======
@@ -3502,6 +3547,10 @@ function initModoPalco() {
   });
 
   document.getElementById("palcoAutoScrollBtn")?.addEventListener("click", alternarAutoScrollPalco);
+
+  document.getElementById("palcoTranspMenos")?.addEventListener("click", () => transporPalco(-1));
+  document.getElementById("palcoTranspMais")?.addEventListener("click", () => transporPalco(1));
+  document.getElementById("palcoTranspReset")?.addEventListener("click", resetarTransposicaoPalco);
 
   // muda a velocidade em tempo real se a rolagem já estiver rodando
   document.getElementById("palcoScrollVelocidade")?.addEventListener("input", () => {
