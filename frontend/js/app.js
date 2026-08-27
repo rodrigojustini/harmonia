@@ -464,7 +464,7 @@ function showLoginForm() {
   app.innerHTML = `
     <div style="max-width: 400px; margin: 2rem auto; padding: 2rem; background: #1a1a1a; border-radius: 1rem;">
       <div style="text-align: center; margin-bottom: 2rem;">
-        <img src="assets/logo-h-160.png" alt="Harmonia" style="width:64px; height:64px; margin: 0 auto 1rem; display:block; filter: drop-shadow(0 0 10px rgba(212,162,76,0.5));" />
+        <img src="/assets/logo-h-160.png" alt="Harmonia" style="width:64px; height:64px; margin: 0 auto 1rem; display:block; filter: drop-shadow(0 0 10px rgba(212,162,76,0.5));" />
         <h1 style="margin: 0; color: #fff;">Harmonia</h1>
         <p style="color: #bbb; margin: 0.5rem 0 0;">Faça login para continuar</p>
       </div>
@@ -1407,7 +1407,7 @@ function limparFormMembro() {
   document.getElementById("tituloFormMembro").textContent = "Novo membro";
   document.getElementById("btnSalvarMembro").textContent = "Salvar membro";
   document.getElementById("btnCancelarEdicaoMembro").style.display = "none";
-  document.getElementById("membroFotoPreview").src = "assets/avatar-padrao.svg";
+  document.getElementById("membroFotoPreview").src = "/assets/avatar-padrao.svg";
   document.getElementById("campoMembroStatus").style.display = "block";
   document.getElementById("campoMembroPerfil").style.display = "block";
   avatarSelecionado = null;
@@ -1434,7 +1434,7 @@ function preencherFormMembroParaEdicao(m) {
   document.getElementById("membroDisponibilidade").value = m.disponibilidade || "";
   document.getElementById("membroStatus").value = String(m.ativo !== false);
   document.getElementById("membroPerfil").value = m.perfil_id || "";
-  document.getElementById("membroFotoPreview").src = m.foto_url || "assets/avatar-padrao.svg";
+  document.getElementById("membroFotoPreview").src = m.foto_url || "/assets/avatar-padrao.svg";
 
   // Status e vínculo de conta são decisão de liderança — membro comum editando o
   // próprio cadastro não deve mexer nisso (evita se marcar inativo sem querer, etc.)
@@ -1625,7 +1625,7 @@ function renderMembros() {
 
       card.innerHTML = `
         <div class="membro-card-topo">
-          <img class="membro-avatar" src="${m.foto_url || "assets/avatar-padrao.svg"}" alt="${m.nome}">
+          <img class="membro-avatar" src="${m.foto_url || "/assets/avatar-padrao.svg"}" alt="${m.nome}">
           <div class="membro-nome-linha">
             <strong title="${m.nome}">${m.nome}</strong>
             <span class="membro-cargo">${m.funcao || m.voz || "—"}</span>
